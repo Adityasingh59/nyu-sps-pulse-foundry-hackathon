@@ -31,10 +31,12 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      # The optional @openai/codex CLI is a local provider dependency. CI never
-      # calls a model, so it is omitted to keep installs fast and hermetic.
+      # A full install is required: Rollup resolves its native binary through an
+      # optional dependency, so --omit=optional breaks the Vite build. The
+      # optional @openai/codex CLI is installed but never invoked — CI makes no
+      # provider calls.
       - name: Install dependencies
-        run: npm ci --omit=optional
+        run: npm ci
 
       - name: Typecheck and build
         run: npm run build
