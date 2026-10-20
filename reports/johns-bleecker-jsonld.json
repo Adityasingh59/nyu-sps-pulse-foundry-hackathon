@@ -1,0 +1,211 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Restaurant",
+  "name": "John's of Bleecker Street",
+  "url": "https://johnsofbleecker.com/",
+  "address": "278 Bleecker Street, New York, NY, 10014, US",
+  "servesCuisine": "Pizza",
+  "menu": "https://johnsofbleecker.com/food-menu",
+  "telephone": "(212) 243-1680",
+  "hasMenu": {
+    "@type": "Menu",
+    "url": "https://johnsofbleecker.com/food-menu",
+    "hasMenuSection": [
+      {
+        "@type": "MenuSection",
+        "name": "Reviewed menu items",
+        "hasMenuItem": [
+          {
+            "@type": "MenuItem",
+            "name": "Garlic Bread",
+            "offers": {
+              "@type": "Offer",
+              "price": "7.50",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "Stuffed Rice Balls",
+            "offers": {
+              "@type": "Offer",
+              "price": "12.50",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "Zucchini Sticks",
+            "offers": {
+              "@type": "Offer",
+              "price": "12.50",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "Mozzarella Sticks",
+            "offers": {
+              "@type": "Offer",
+              "price": "12.50",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "Fried Calamari (fish)",
+            "offers": {
+              "@type": "Offer",
+              "price": "19.00",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "John's House Salad",
+            "offers": {
+              "@type": "Offer",
+              "price": "14.50",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "Caesar Salad",
+            "offers": {
+              "@type": "Offer",
+              "price": "14.50",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "John's Meatball Dish (Beef)",
+            "offers": {
+              "@type": "Offer",
+              "price": "14.00",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "John's Mixed Fried Sampler",
+            "offers": {
+              "@type": "Offer",
+              "price": "19.00",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "John's Meatball Sandwich",
+            "offers": {
+              "@type": "Offer",
+              "price": "16.00",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "14\" Pizza (serves 1 to 2 persons)",
+            "offers": {
+              "@type": "Offer",
+              "price": "22.00",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "16\" Pizza (serves 2 to 3 persons)",
+            "offers": {
+              "@type": "Offer",
+              "price": "25.00",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "10\" Calzone (serves 1 to 2 persons)",
+            "offers": {
+              "@type": "Offer",
+              "price": "17.00",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "14\" Calzone (serves 2 to 3 persons)",
+            "offers": {
+              "@type": "Offer",
+              "price": "24.00",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "Pasta Meat Sauce",
+            "offers": {
+              "@type": "Offer",
+              "price": "15.00",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "Cheese Ravioli Pasta",
+            "offers": {
+              "@type": "Offer",
+              "price": "15.00",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "Spinach Ravioli Pasta",
+            "offers": {
+              "@type": "Offer",
+              "price": "15.00",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "Stuffed Shells Pasta",
+            "offers": {
+              "@type": "Offer",
+              "price": "15.00",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "Pasta with Meatball (one)",
+            "offers": {
+              "@type": "Offer",
+              "price": "10.50",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "Pasta with Butter",
+            "offers": {
+              "@type": "Offer",
+              "price": "8.50",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "MenuItem",
+            "name": "Cheese or Spinach Ravioli (3 pieces)",
+            "offers": {
+              "@type": "Offer",
+              "price": "8.50",
+              "priceCurrency": "USD"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

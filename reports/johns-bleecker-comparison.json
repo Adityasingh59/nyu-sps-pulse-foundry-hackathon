@@ -1,0 +1,144 @@
+{
+  "beforeRunId": "run_426d5165-73f6-4270-af81-b2715c609fde",
+  "afterRunId": "run_3d567f41-3bb7-4136-a70d-dd29c970d0bf",
+  "compatible": true,
+  "reasons": [],
+  "matched": 20,
+  "excluded": 0,
+  "beforeMetrics": {
+    "attempted": 20,
+    "valid": 20,
+    "excludedAmbiguous": 0,
+    "mentions": 15,
+    "recommendations": 15,
+    "mentionRate": 75,
+    "recommendationRate": 75,
+    "averagePosition": 1.4666666666666666,
+    "positionSamples": 15,
+    "shareOfVoice": 24.59016393442623,
+    "coverage": 100,
+    "totalRecommendationAppearances": 61
+  },
+  "afterMetrics": {
+    "attempted": 20,
+    "valid": 20,
+    "excludedAmbiguous": 0,
+    "mentions": 15,
+    "recommendations": 15,
+    "mentionRate": 75,
+    "recommendationRate": 75,
+    "averagePosition": 1.5333333333333334,
+    "positionSamples": 15,
+    "shareOfVoice": 23.809523809523807,
+    "coverage": 100,
+    "totalRecommendationAppearances": 63
+  },
+  "mentionRateChange": 0,
+  "recommendationRateChange": 0,
+  "pairs": [
+    {
+      "queryId": "query_27bc8328-5b46-409e-b22c-03ca92cd670d",
+      "beforeMention": true,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_276c10d2-a8c0-497c-93f9-bf651fc8ae9f",
+      "beforeMention": true,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_6018db00-2d2e-471e-b138-fd8420480d73",
+      "beforeMention": true,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_db1bb90c-4e21-4a68-8ffb-4dbe8f404021",
+      "beforeMention": true,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_696b5ecc-c149-434c-b5dc-6c83b05aff89",
+      "beforeMention": true,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_e3ad1a8f-6b42-4ef6-9322-4ec0e101d916",
+      "beforeMention": true,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_36d69e47-5a40-479d-8a2d-27a53552c652",
+      "beforeMention": false,
+      "afterMention": false
+    },
+    {
+      "queryId": "query_96862a61-ffdd-4e14-bae3-5f9fe313335c",
+      "beforeMention": true,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_f056433a-f8fc-48b2-a5e6-c7c20d9845b4",
+      "beforeMention": true,
+      "afterMention": false
+    },
+    {
+      "queryId": "query_b1d9af5f-ee8c-4199-8752-dd88c91cdbba",
+      "beforeMention": true,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_abc37d1b-23fd-4caf-a40c-66d628fc9690",
+      "beforeMention": true,
+      "afterMention": false
+    },
+    {
+      "queryId": "query_a5da1df2-3775-40d7-89f4-c1455faf0592",
+      "beforeMention": true,
+      "afterMention": false
+    },
+    {
+      "queryId": "query_b6c46d21-9635-43cf-98eb-1b7032dc205f",
+      "beforeMention": true,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_afa137b9-4b1a-45fb-92e2-606928d3fb4e",
+      "beforeMention": false,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_9a058029-8b99-473d-9f09-647c9cca421c",
+      "beforeMention": false,
+      "afterMention": false
+    },
+    {
+      "queryId": "query_b0e57d3a-1060-4ae0-8f34-f9705b9606ae",
+      "beforeMention": true,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_65ee520d-950b-4e83-ba4e-4ca33f1cedbe",
+      "beforeMention": true,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_fc7c7fc0-7353-4c59-96f1-cb2d22b88f24",
+      "beforeMention": true,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_5382f8a1-eb4c-4f16-8e4b-5501fcff7f54",
+      "beforeMention": false,
+      "afterMention": true
+    },
+    {
+      "queryId": "query_042fc4cc-78fa-4fc7-ae02-bf7eb5b6c97e",
+      "beforeMention": false,
+      "afterMention": true
+    }
+  ],
+  "limitations": [
+    "Results describe these question/sample pairs and saved provider settings; changes do not establish causation.",
+    "Observed positions apply only to explicit recommendation lists."
+  ]
+}

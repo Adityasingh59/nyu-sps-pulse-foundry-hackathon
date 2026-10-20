@@ -1,0 +1,22 @@
+# Normalize line endings in text so diffs stay readable across machines.
+* text=auto eol=lf
+
+*.ts   text
+*.tsx  text
+*.json text
+*.md   text
+*.css  text
+*.html text
+*.yml  text
+*.mjs  text
+
+# Binary: never line-ending-normalized, never diffed as text.
+*.pdf    binary
+*.sqlite binary
+*.png    binary
+*.jpg    binary
+*.ico    binary
+
+# Generated or vendored content is excluded from language statistics.
+package-lock.json linguist-generated=true
+dist/**           linguist-generated=true

@@ -1,0 +1,41 @@
+name: Task
+description: A unit of work toward the PRD or the event brief
+labels: ["task"]
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What is true after this is done that is not true now?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: Where does this come from?
+      options:
+        - "Event brief deliverable"
+        - "Event brief judging criterion"
+        - "PRD P0 (functional demo)"
+        - "PRD P1 (bonus)"
+        - "Gap identified in docs/brief-validation.md"
+        - "Internal quality or cleanup"
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: How will we know it works? Name the test or the observable behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Constraints and notes
+      description: >
+        Flag anything touching provenance, publication authorization, evidence
+        labeling or causal claims.

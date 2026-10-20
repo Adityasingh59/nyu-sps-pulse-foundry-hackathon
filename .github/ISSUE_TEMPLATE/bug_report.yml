@@ -1,0 +1,52 @@
+name: Bug report
+description: Something behaves incorrectly or reports something untrue
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Include the run ID, restaurant ID or artifact ID if there is one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should have happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Does this cause the system to state something untrue?
+      description: >
+        Incorrect metrics, invented facts, a failure counted as a non-mention, a
+        mislabeled evidence mode, or a causal claim are the highest-severity class
+        of bug in this project and are fixed before anything else.
+      options:
+        - "Yes — it reports something untrue"
+        - "No — it is a functional or cosmetic problem"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        Node version:
+        Provider / adapter:
+        Live, synthetic or replay:

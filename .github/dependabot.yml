@@ -1,0 +1,29 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    groups:
+      # One PR per ecosystem area keeps review cheap on a small team.
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      build-tooling:
+        patterns: ["vite", "@vitejs/*", "typescript", "tsx", "concurrently"]
+    ignore:
+      # The provider CLI is pinned deliberately: its event format is parsed in
+      # server/codex-provider.ts and a silent major bump would break capture.
+      - dependency-name: "@openai/codex"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "ci"

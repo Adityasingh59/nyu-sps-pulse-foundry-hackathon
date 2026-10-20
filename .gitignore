@@ -1,0 +1,23 @@
+node_modules/
+dist/
+
+# Secrets are read from the shell. Only the reference file is tracked.
+.env
+.env.*
+!.env.example
+
+# Local evidence database, raw provider answers and runtime state. This is real
+# collected data, not a build output: never commit it, never delete it to make a
+# test pass. See docs/PROGRESS.md.
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+*.log
+*.tsbuildinfo
+coverage/
+
+.DS_Store
+.vscode/
+.idea/

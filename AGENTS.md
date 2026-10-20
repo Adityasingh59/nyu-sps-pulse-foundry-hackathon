@@ -1,0 +1,13 @@
+# Project continuation
+
+The current user authorized work toward a real NYC restaurant workflow and persistence across restarts, and asked that work continue after token/session restarts. Continue authorized implementation from the checkpoint; do not treat a restart as a request to stop or redo completed work. This authorization does not extend to publishing on restaurant sites, outreach, destructive data resets, or spending outside configured provider limits.
+
+Read `docs/PROGRESS.md`, `docs/restaurant-research.md`, `PRD.md` and `README.md` before resuming. Preserve existing SQLite records and immutable historical runs, source snapshots, and artifact versions. The selected real case study is John's of Bleecker Street at 278 Bleecker Street, New York, NY 10014; the Linden Table example must remain unmistakably synthetic.
+
+Use Node.js 24+. Commands: `npm install`; `npm run dev` (API 3001, UI 5173); `npm test`; `npm run build`; `npm start` after a build, or `npm run up` for the managed local server. `npm run local:status` checks it and `npm run down` stops it. Stop the development server before starting the built server on the same API port. Default storage is `data/tablesignal.sqlite`; use `TABLESIGNAL_DB_PATH` and ephemeral ports for isolated tests. Do not delete default data to make tests pass.
+
+Never open, copy, parse, print, export, or repurpose credential/authentication files or tokens. Do not extract a signed-in CLI's credentials to obtain an API key. Use supported authenticated CLI operations, documented status commands, connected tools, or an explicitly configured server-side provider key. Never log credentials or put secrets into browser assets, exports or checkpoints.
+
+Keep `website`, `owner`, and `synthetic` provenance distinct. Publicly observed facts are not owner-confirmed facts. Store actual retrieval timestamps, URLs, hashes, excerpts, failures, and uncertainties. Do not invent dietary claims, prices, competitors, successful provider runs or improvement. Select competitors from observed answers before researching their sites. Match comparisons by frozen questions and compatible provider settings; failures reduce coverage rather than count as absent mentions.
+
+After consequential changes, update `docs/PROGRESS.md` with the current state, verified commands/results, unresolved blockers and the next concrete action. Keep any active goal's status truthful; lack of context alone is not completion. Run relevant isolated tests and `npm run build` before reporting a working milestone.
