@@ -4,9 +4,13 @@ Written **October 20, 2026** against the code as it stands. Part A is readable w
 engineering background and is the right thing to hand a judge, a teammate or a restaurant owner.
 Part B is the implementation reference.
 
-Companion documents: [PRD.md](../PRD.md) (target specification), [brief-validation.md](brief-validation.md)
-(what is done vs. the event brief), [PROGRESS.md](PROGRESS.md) (current state), [implementation.md](implementation.md)
+Companion documents: [PRD.md](../PRD.md) (v1.1, the current target specification),
+[brief-validation.md](brief-validation.md) (what is done vs. v1.1 and the event brief),
+[PROGRESS.md](PROGRESS.md) (current state), [implementation.md](implementation.md)
 (design decisions and limits).
+
+This document describes **what is built**. Several PRD v1.1 P0 requirements are not built yet
+and are therefore absent here; §B16 and `brief-validation.md` enumerate them.
 
 ---
 
@@ -428,8 +432,12 @@ analysis revision, timestamp) retrievable at `GET /api/runs/:id/audit`.
 | `POST /api/opportunities/:id/artifacts` · `PATCH /api/artifacts/:id` · `GET /api/artifacts/:id/export` | Generate, version, download |
 | `GET /api/comparisons?before=&after=` | Compatibility-gated comparison |
 
-Against PRD §12, every P0 route exists. The P1 routes — `/approvals`, `/actions`, `/actions/:id/rollback` —
-are intentionally absent.
+Against **PRD v1.1** §12, the routes above cover discovery, analysis, action and manual
+re-measurement. Four P0 routes are **not yet implemented** — `POST /experiments` and
+`GET /experiments/:id` (FR-10), `POST /schedules` (FR-11) and `GET /restaurants/:id/trend`
+(FR-11) — along with a first-class `/restaurants/:id/evidence` collection and manual-entry
+endpoint (FR-05). The P1 routes (`/approvals`, `/actions`, `/actions/:id/rollback`) are
+intentionally absent. See [brief-validation.md](brief-validation.md) for the full gap list.
 
 Input hardening: `textInput` length-bounds every string field, cross-origin mutations are rejected,
 fetch destinations are validated before use, and **branded discovery questions are rejected at the

@@ -1,179 +1,197 @@
-# Brief validation — deliverables vs. the NYU SPS X Pulse Foundry CFA
+# Validation — delivered scope vs. PRD v1.1 and the event brief
 
-Validated **October 20, 2026**. Source brief: `Project Details/NYU SPS X Pulse Foundry.pdf`.
+Revised **October 20, 2026** against [PRD v1.1](../PRD.md). The previous revision of this
+document measured against v1.0 and is superseded by this one.
+
 Event: **Friday, October 23, 2026**, 9:00 AM – 7:00 PM, NYU SPS MTC Rooms 1026 & 1027.
+Source brief: `Project Details/NYU SPS X Pulse Foundry.pdf`.
 
-This document records what the brief asks for, what is built and independently verified, what is
-missing, and what to do with the remaining time. It supplements [PROGRESS.md](PROGRESS.md) (current
-state) and [implementation.md](implementation.md) (how it works); it does not replace either.
+## 1. Headline
 
-## 1. Verification method
+**Against v1.0 the project was close to complete. Against v1.1 it is roughly half of P0.**
 
-Claims in `PROGRESS.md` and `reports/johns-bleecker-case-study.md` were re-checked against the
-running code and the SQLite store rather than taken at face value. The brief PDF was extracted with
-`pypdf` (no `pdftotext` installed locally).
+v1.1 promoted nearly every gap identified in the previous revision from optional to required:
+a second provider, off-site evidence, three additional artifact types, a controlled retrieval
+experiment, scheduled re-runs, a trend chart, and recorded replay. Five of those are at zero.
 
-| Claim under test | How it was checked | Result |
+Nothing regressed. The build did not get worse — the specification got larger.
+
+The good news is that the hardest-won parts are the parts that already exist and are hard to
+retrofit under time pressure: real measured data, an immutable audit trail, conservative parsing,
+and a comparison gate that refuses to lie. The missing work is mostly additive.
+
+## 2. Verification of existing claims
+
+Re-checked against the running code and the SQLite store, not taken from documentation.
+
+| Claim | Method | Result |
 | --- | --- | --- |
-| 42 tests, 0 failures | `npm test` | Confirmed: 42 pass |
-| TypeScript + Vite production build | `npm run build` | Confirmed: clean |
-| Two real runs, 40 saved raw answers | `runs` table in `data/tablesignal.sqlite` | Confirmed: 20 + 20, every result `succeeded`, raw answers 732–1678 characters, real provider citations |
-| Baseline 75% mention / 100% coverage / 24.59% share of voice | Stored run metrics | Confirmed: exact match to the published case study |
-| 20 matched pairs, 0 excluded, 0pp change | `comparisons` table and `reports/johns-bleecker-comparison.json` | Confirmed |
-| 20 non-branded questions, four or more intent dimensions | `shared/questions.ts` | Confirmed: 20 templates, 8 intent dimensions, `branded: false`, identity stripped from locality and cuisine substitutions |
-| Export only; no publication path | Route list in `server/index.ts` | Confirmed: no approval, action or rollback routes exist |
+| 42 tests, 0 failures | `npm test` | Confirmed |
+| TypeScript + Vite build | `npm run build` | Confirmed |
+| Two live runs, 40 raw answers | `runs` table | Confirmed: 20 + 20 all `succeeded`, answers 732–1678 chars, real citations |
+| 75% mention / 100% coverage / 24.59% SoV | Stored run metrics | Confirmed: exact match to the case study |
+| 20 matched pairs, 0 excluded, 0pp change | `comparisons` table | Confirmed |
+| 20 non-branded questions, 5+ dimensions | `shared/questions.ts` | Confirmed: 8 intent dimensions, `branded: false`, neutrality enforced at the API boundary |
+| Export only, no publication | Route list | Confirmed |
 
-Store contents at validation time: 5 runs, 119 provider calls, 4 artifacts, 30 opportunities,
-48 source snapshots, 3 comparisons, 2 restaurants.
+No documented claim was found to be overstated. Store contents: 2 restaurants, 5 runs, 119 calls,
+48 sources, 30 opportunities, 4 artifacts, 3 comparisons.
 
-No claim in the existing documentation was found to be overstated.
+## 3. Status against v1.1 functional requirements
 
-## 2. Completed — brief deliverables
+| Req | P0 requirement | Status | Detail |
+| --- | --- | --- | --- |
+| FR-01 | Identity, profile, provenance | **Done** | Disambiguation, source links, unknown-stays-unknown, owner vs. website provenance all enforced |
+| FR-02 | ~20 non-branded questions, 5+ dimensions | **Done** | 8 dimensions; identity stripped from locality/cuisine substitution; branded questions rejected server-side |
+| FR-03 | **Two** providers side by side | **Partial** | One adapter executed (Codex CLI, `gpt-6.1-sol`). The Responses API adapter exists but has never run. No per-provider metric split in the UI |
+| FR-04 | Parsing and entity matching | **Done, method deviates** | Meets the acceptance criterion — every metric traces to a raw answer and span. But v1.1 specifies LLM extraction under a JSON schema validated in code; the build uses a deterministic regex parser (`conservative-list-v4`) |
+| FR-05 | Evidence incl. reviews, press, Reddit | **Partial** | Website content, structured data and provider citations: done. Review counts/ratings, press/blogs, Reddit/forums: **none collected** |
+| FR-06 | 3–5 opportunities, ≥1 off-site, exec summary | **Partial** | 3 produced, all on-site, each source-linked. Missing: off-site opportunity, executive summary paragraph, `action_type` and `owner_control` fields |
+| FR-07 | 8 artifact types | **Partial** | 3 of 8: `about`, `faq`, Restaurant+Menu JSON-LD. Missing: FAQPage JSON-LD, local landing page, outreach drafts, menu descriptions as a distinct artifact |
+| FR-08 | Approval and publication | **Not built (correctly P1)** | No approval, publish, read-back or rollback routes |
+| FR-09 | Live re-run and comparison | **Done** | Compatibility gate is stricter than v1.1 requires: 10 fields must match or metrics stay `null` |
+| **FR-10** | **Controlled A / A-repeat / B experiment** | **Not started** | No corpus versioning, no retriever, no experiment service or routes |
+| **FR-11** | **Scheduled daily re-run + trend chart** | **Not started** | No scheduler, no trend series, no `trigger` field on runs |
+| **FR-12** | **Recorded replay** | **Not built** | `EvidenceMode` is `synthetic \| live` only. No replay mode, label or original-timestamp display |
 
-| Brief deliverable | Status | Evidence |
-| --- | --- | --- |
-| Working demo using at least one real restaurant, NYU-area preferred | Complete | John's of Bleecker Street, 278 Bleecker Street, Greenwich Village; four official pages retrieved; app served at `http://127.0.0.1:3001` |
-| Visibility report vs. named competitors, with specific reasons for the gap | Complete | `reports/johns-bleecker-case-study.md`; Bleecker Street Pizza, Song E' Napule, Denino's Greenwich Village, Arturo's Coal Oven Pizza, each finding tied to a stored snapshot |
-| Generated artifacts the restaurant could actually use | Complete | FAQ draft, about copy, validated Restaurant + nested Menu/MenuItem/Offer JSON-LD |
-| A measurement mechanism — "re-run this and compare" counts | Complete | Frozen bank re-run with settings/parser compatibility checks; 20 matched pairs, 0 excluded |
-| (Bonus) evidence of the agent taking a real action autonomously | Not implemented | Export only; no publication, outreach or CMS integration |
+### Scorecard
 
-## 3. Completed — four-stage loop
+Five of twelve requirements fully met; four partial; three at zero. The three at zero —
+FR-10, FR-11, FR-12 — are the ones v1.1 §18 explicitly forbids cutting.
 
-| Stage | Built | Notes |
-| --- | --- | --- |
-| Discovery | Yes | 20-question frozen bank across 8 intent dimensions; each question runs in a separate ephemeral Codex CLI conversation with live web search; target profile never enters the prompt; mention, recommendation, position and competitors logged per answer |
-| Analysis | Partial | Scorecard (mention rate, recommendation rate, average position, share of voice, coverage) plus source-linked opportunities. Evidence base is narrower than the brief lists — see §4.3 |
-| Action | Partial | FAQ, about copy and schema markup generated from accepted facts with provenance. No locally-relevant landing content; no autonomous action — see §4.5 |
-| Measurement | Partial | Manual re-run and compatibility-checked comparison. No scheduling and no time series — see §4.2 |
+## 4. Status against the brief's deliverables
 
-## 4. Gaps against the brief
+The brief is less demanding than v1.1. Measured against the brief alone:
 
-Ordered by risk to the submission.
-
-### 4.1 The demo story is inverted — highest risk
-
-The brief's stated bar is *"here's what's broken, here's what we fixed, here's proof it worked"* and
-*"a before → diagnosis → fix → after story, not just a technical pipeline."*
-
-John's of Bleecker Street appears in **15 of 20 answers at average position 1.47**. It is the
-incumbent winner, not the struggling business in the brief's Greenwich Kitchen sample case. The
-follow-up run shows **0 percentage points of change** because no content was published between runs.
-The result is a before and an after that are identical, with no fix in between.
-
-This is honest, and the PRD explicitly permits an unchanged result as valid. It is nonetheless not
-the arc the judges described, and "Polish & demo quality" is scored on exactly that arc.
-
-### 4.2 Scheduled re-testing is a core build item, not a bonus
-
-Brief, *What You'll Build* §4: *"Re-run the same query bank on a schedule (daily/weekly) and track
-mention rate and rank over time."* The PRD demotes scheduling to P1 ("if time and infrastructure
-permit") and it is unimplemented. Measurement is manual re-run only, producing two data points
-rather than a trend.
-
-### 4.3 Analysis inputs are narrower than the brief lists
-
-The brief names website copy, structured data, **Google Business Profile, Yelp/TripAdvisor listings,
-press coverage, blog mentions, and Reddit/forum discussion**. The collector inspects own-site pages
-and provider-cited competitor sites only.
-
-Most consequentially there is **no review-count data of any kind**, so the single most concrete lever
-in the brief's own worked example — *"340 Google reviews (you have 40)"* — cannot be produced.
-
-### 4.4 One provider, and the generalization argument is unwritten
-
-Only the Codex CLI adapter (`gpt-6.1-sol`, ChatGPT sign-in) has executed. The Responses API adapter
-exists but has never run; there is no Gemini or Perplexity path.
-
-The brief permits this — *"build for the ones you can reach"* — **on the condition that you clearly
-explain how the approach generalizes to others.** That explanation does not currently appear in the
-PRD, the implementation notes or the case study. This is a writing task, not an engineering one.
-
-### 4.5 Action layer is missing locally-relevant landing content
-
-Supported artifact types are `faq | about | jsonld`. The brief specifically calls for
-*"locally-relevant landing content (e.g. 'Best lunch spots near NYU' written to plausibly earn a
-citation)"* and improved menu descriptions.
-
-### 4.6 Visual QA unverified
-
-`PROGRESS.md` flags this honestly and it remains unresolved: no browser was available in the last
-phase and a Chrome launch timed out. The earlier synthetic milestone's browser checks do not validate
-the current interface. The brief weights demo polish.
-
-## 5. Judging-criteria read
-
-| Criterion | Assessment |
+| Brief deliverable | Status |
 | --- | --- |
-| Discovery depth | Strong on query realism and independence; thin on platform breadth (one provider), and the generalization explanation is missing |
-| Analytical rigor | Strongest area — source snapshots, exact evidence spans, rejected-source audit trail, separation of mention from recommendation, scoped absence findings |
-| Actionability | Good — three evidence-backed opportunities and exportable artifacts; weakened by no review data and no landing content |
-| Autonomy (bonus) | Not attempted |
-| Measurability | Credible mechanism, but two points and no schedule |
-| Polish & demo quality | At risk — see §4.1 and §4.6 |
+| Working demo on at least one real restaurant | **Complete** — John's of Bleecker Street, Greenwich Village, four official pages |
+| Visibility report vs. named competitors with specific gap reasons | **Complete** — snapshot-linked findings naming Bleecker Street Pizza, Song E' Napule, Denino's, Arturo's |
+| Generated artifacts the restaurant could use | **Complete** — FAQ, about copy, validated Restaurant+Menu JSON-LD |
+| A measurement mechanism ("re-run and compare" counts) | **Complete** — 20 matched pairs, 0 excluded |
+| (Bonus) autonomous real action | **Not attempted** |
 
-## 6. Process flags — elimination-level, not scoring-level
+**The brief's deliverables are met. v1.1's P0 is not.** That gap is a deliberate product
+decision in v1.1 to aim above the brief's floor, and it is the right call for judging — but it
+means "we satisfy the brief" is not the same as "we are done."
 
-- **Team submissions only.** The brief states individual submissions will not be considered. PRD §19
-  still lists team and registration status as unresolved.
-- **Advance-work eligibility.** PRD §19 flags that the brief does not state whether pre-event coding
-  is permitted. Still unconfirmed with organizers. Contact: Dr. Steven Goss, `swg3@nyu.edu`.
-- **Submission format unspecified.** The brief does not name a required repository, deck, hosting or
-  recording format. Worth confirming.
-- **Not a git repository.** Whatever the submission format, version history is worth having.
+## 5. The problem v1.1 solves, and the one it does not
 
-## 7. Suggestions for remaining time
+### Solved: the demo arc
 
-Three days to the event. Ordered by value per hour.
+The previous revision's top finding was that the demo story is inverted. John's appears in
+**15 of 20 answers at average position 1.47** — it is the incumbent winner, not the struggling
+business in the brief's Greenwich Kitchen example — and the follow-up run shows **0pp change**
+because nothing was published between runs. There is a before and an identical after with no fix
+between them, which is not the *"what's broken → what we fixed → proof it worked"* arc judges
+were told to expect.
 
-### Priority 1 — fix the demo arc (§4.1)
+v1.1 fixes this structurally by making **FR-10 the proof mechanism**. The controlled experiment
+produces a real before/after under conditions we control and can explain, with an A-repeat
+negative control showing how much the result moves by chance alone. That is a stronger and more
+honest answer than hoping a live run shifts in one day.
 
-Select a second, genuinely weak NYU-area restaurant as the primary demo subject so the diagnosed gap
-is real, then use the controlled retrieval experiment already specified in PRD §9 to produce an
-honest *after*. Keep John's of Bleecker Street as the contrasting "healthy incumbent" case — the
-comparison between a winner and a straggler is itself a strong three-minute story.
+This also means the earlier suggestion to swap in a weaker restaurant is **no longer the primary
+fix**. It remains useful — a visible gap makes the diagnosis more vivid — but FR-10 carries the
+proof either way.
 
-Label the controlled experiment exactly as PRD §9 requires: it demonstrates behavior in our
-retrieval setup and is not proof of improved visibility in public AI products. Do not manufacture an
-improving result.
+### Not solved: there is still nothing to diagnose
 
-### Priority 2 — write the generalization paragraph (§4.4)
+FR-10 proves that *better information changes retrieval-based recommendations*. It does not supply
+the finding that makes an owner care. With no review counts, the brief's own worked example —
+*"340 Google reviews, you have 40"* — remains impossible to produce, and all three current
+opportunities are structural-markup observations about a restaurant that is already winning.
 
-Roughly 20 minutes of prose covering: the adapter interface, what a Gemini or Perplexity adapter
-would need to implement, which metrics are provider-independent, and why per-provider results are
-not directly comparable. Add it to the case study and the README.
+**FR-05's off-site evidence is what makes FR-10 worth watching.** They should be built in that
+order.
 
-### Priority 3 — add one third-party evidence channel (§4.3)
+## 6. Open process items — elimination-level
 
-Review counts are the highest-value single addition, because they unlock the brief's own example
-comparison. Respect the brief's note on scraping etiquette and rate limits. If no compliant source is
-reachable in the time available, state that limitation explicitly rather than leaving the gap silent.
+These are unchanged and still unresolved. They outrank every engineering item below.
 
-### Priority 4 — add a landing-content artifact type (§4.5)
+- **Advance-coding eligibility.** v1.1 §18 puts this first in the pre-event checklist: confirm with
+  Dr. Steven Goss (`swg3@nyu.edu`) whether pre-built code is permitted. A substantial codebase now
+  exists. If the answer is no, the prep must be reduced to data, keys and prompts — and knowing
+  that on Thursday is survivable in a way that discovering it on Friday is not.
+- **Team submissions only.** Individual submissions will not be considered. Members and roles
+  still unconfirmed.
+- **Submission format unspecified.** Repo, deck, recording — ask.
 
-Extend `ArtifactType` with a locally-relevant landing page generated from accepted facts, following
-the same provenance and validation rules as the existing types.
+## 7. Plan for the remaining three days
 
-### Priority 5 — scheduled re-testing (§4.2)
+v1.1 §18 supplies an hour-by-hour event-day plan. What follows is the **pre-event** ordering, which
+§18 leaves to us, and it assumes advance coding is permitted. If it is not, items 2–6 become
+Friday work and only item 1 survives.
 
-Even a simple interval trigger writing to the existing run history would convert two data points into
-a trend and satisfy an explicit build item.
+### Thursday priority order
 
-### Priority 6 — visual QA (§4.6)
+**1. Confirm eligibility, team and format.** Blocks everything. One email.
 
-Run when browser access returns, as `PROGRESS.md` already plans.
+**2. FR-05 off-site evidence — reviews first.** Highest value per hour in the whole list. Review
+count and rating for the target and top three competitors unlocks FR-06's off-site opportunity,
+makes the executive summary concrete, and feeds corpus A in FR-10. Use official APIs (Google
+Places, Yelp Fusion) within their terms; v1.1 explicitly permits manual entry with source URL and
+date as the fallback, which is a legitimate shortcut under time pressure. Press and Reddit after,
+and manual entry is fine there too.
 
-### Not recommended before the event
+**3. FR-10 controlled experiment.** The largest build and uncuttable. Corpus versioning, a fixed
+retriever, A / A-repeat / B runs, and the integrity rule that only target content changes between
+A and B. The A-repeat negative control is not optional decoration — without it a B-side improvement
+is indistinguishable from noise, and a judge will ask.
 
-Approval-gated publication, rollback, outreach and CMS integration. These are bonus-only, carry real
-authorization risk against a business the team does not represent, and cost more than the remaining
-items are worth.
+**4. FR-12 recorded replay.** Small, and it de-risks the entire presentation. Extend `EvidenceMode`
+with a replay mode, persist the original mode and timestamp, and render a permanent label. v1.1 §18
+forbids cutting it, and the demo must never wait on a live call.
+
+**5. FR-07 remaining artifact types.** FAQPage JSON-LD is nearly free given the existing FAQ
+generator and validator. The landing page and outreach drafts are text generation against accepted
+facts. Note v1.1 wants visible placeholders — `[owner to confirm: hours]` — where the current build
+omits unknown fields entirely; that is a small behavioural change worth making, since a visible
+placeholder is more honest than a silent omission.
+
+**6. FR-11 scheduler and trend chart.** A daily trigger writing to run history, plus a chart with
+sample size per point. Keep controlled-simulation results on a separate series — v1.1 is explicit
+that they must never be mixed into the live trend line.
+
+**7. FR-03 second provider.** Cheapest path: supply a key for the existing Responses API adapter
+and show both. v1.1 permits shipping one provider if the second displays as "configured but
+unavailable", so this is a UI state plus a written generalization argument — which is still
+unwritten anywhere and takes about twenty minutes.
+
+### Deliberately not doing
+
+- **No stack migration.** v1.1 §10 suggests Python/FastAPI with Next.js or Streamlit as a *default
+  suggestion*, not a requirement. The working system is TypeScript/Express/React with 42 passing
+  tests and real collected data. Rewriting it three days out would destroy the only genuine asset
+  the project has. This override should be stated out loud, not left implicit.
+- **No removal of "deferred" hardening.** v1.1 §4 lists idempotency keys, the immutable audit model
+  and SSRF hardening as deferred. All three are built and tested. Deferred means "not required",
+  not "must be removed" — and the audit trail is the strongest evidence of analytical rigor the
+  project has.
+- **No FR-08 publication before P0 closes.** Bonus-only, and it carries real authorization risk
+  against a business the team does not represent.
+- **No parser rewrite to the LLM-extraction method in FR-04.** The deterministic parser meets
+  FR-04's acceptance criterion and is more traceable. Its weakness — missing free-prose competitors
+  — is worth noting in the demo, not fixing under time pressure. Revisit after the event.
+
+### Cut order if Friday runs short
+
+v1.1 §18 specifies: P1 publication → Gmail outreach drafts → multi-sample runs → second provider.
+Never cut the controlled experiment, the evidence table, or replay.
 
 ## 8. Standing constraints
 
-Unchanged from `PROGRESS.md` and the PRD, repeated here because they bound every suggestion above:
+These bound every item above and are enforced in code and tests. From [AGENTS.md](../AGENTS.md)
+and PRD v1.1 §4 and §7.
 
-- Website review does not grant publication permission. No third-party listing edits.
-- No fabricated reviews, ratings, prices, awards, dietary assurances or uplift figures.
-- Live, simulated, recorded and synthetic results must remain distinctly labeled.
-- Historical runs and source snapshots are immutable; corrections are versioned and auditable.
+- Never invent a fact. No prices, hours, ratings, review counts, awards or dietary assurances
+  without a real source. Unknown stays unknown, and v1.1 prefers a visible placeholder to silence.
+- Keep `website`, `owner` and `synthetic` provenance distinct.
+- Failures reduce coverage; they are never counted as "not recommended."
+- Never claim causation between a content edit and a change in public AI products.
+- "Not found" is scoped to the pages inspected.
+- Live, controlled-simulation, recorded-replay and synthetic results must be impossible to confuse.
+- Runs, snapshots and artifact versions are immutable; corrections are audited.
+- No publication to a real restaurant's site, listings or inbox. Export only.
+- Review recommendations must be policy-compliant — ask all customers, never gate or incentivize.
+- Respect robots.txt, rate limits and API terms; prefer official APIs over scraping review sites.

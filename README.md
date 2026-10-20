@@ -59,4 +59,6 @@ npm run build
 
 Tests use temporary databases and ephemeral ports; they do not call the model or erase local data. Coverage includes metrics, conservative parsing, source provenance, safe fetching and robots rules, immutable artifact versions, nested menu validation, independent provider capture, restart recovery, request ceilings and audit records.
 
-Read [docs/PROGRESS.md](docs/PROGRESS.md) to resume across sessions. [AGENTS.md](AGENTS.md) preserves the current authorization and safeguards. [docs/implementation.md](docs/implementation.md) records the architecture and limits; [PRD.md](PRD.md) remains the complete target specification.
+Read [docs/PROGRESS.md](docs/PROGRESS.md) to resume across sessions. [AGENTS.md](AGENTS.md) preserves the current authorization and safeguards. [docs/system-overview.md](docs/system-overview.md) explains how the system works, technically and non-technically; [docs/implementation.md](docs/implementation.md) records design decisions and limits.
+
+[PRD.md](PRD.md) is the current target specification (**v1.1**); [docs/brief-validation.md](docs/brief-validation.md) tracks delivered scope against it and against the event brief. v1.1 raised P0 considerably, so several of its requirements are not yet built — the validation document is the authoritative gap list. [docs/PRD-v1.0-superseded.md](docs/PRD-v1.0-superseded.md) is retained for history only.

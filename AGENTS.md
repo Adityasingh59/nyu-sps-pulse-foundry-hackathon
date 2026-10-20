@@ -2,7 +2,7 @@
 
 The current user authorized work toward a real NYC restaurant workflow and persistence across restarts, and asked that work continue after token/session restarts. Continue authorized implementation from the checkpoint; do not treat a restart as a request to stop or redo completed work. This authorization does not extend to publishing on restaurant sites, outreach, destructive data resets, or spending outside configured provider limits.
 
-Read `docs/PROGRESS.md`, `docs/restaurant-research.md`, `PRD.md` and `README.md` before resuming. Preserve existing SQLite records and immutable historical runs, source snapshots, and artifact versions. The selected real case study is John's of Bleecker Street at 278 Bleecker Street, New York, NY 10014; the Linden Table example must remain unmistakably synthetic.
+Read `docs/PROGRESS.md`, `docs/restaurant-research.md`, `PRD.md` (now **v1.1**; `docs/PRD-v1.0-superseded.md` is history only), `docs/brief-validation.md` for the current gap list, and `README.md` before resuming. Preserve existing SQLite records and immutable historical runs, source snapshots, and artifact versions. The selected real case study is John's of Bleecker Street at 278 Bleecker Street, New York, NY 10014; the Linden Table example must remain unmistakably synthetic.
 
 Use Node.js 24+. Commands: `npm install`; `npm run dev` (API 3001, UI 5173); `npm test`; `npm run build`; `npm start` after a build, or `npm run up` for the managed local server. `npm run local:status` checks it and `npm run down` stops it. Stop the development server before starting the built server on the same API port. Default storage is `data/tablesignal.sqlite`; use `TABLESIGNAL_DB_PATH` and ephemeral ports for isolated tests. Do not delete default data to make tests pass.
 

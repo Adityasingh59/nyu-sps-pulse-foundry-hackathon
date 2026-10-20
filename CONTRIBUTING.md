@@ -93,6 +93,8 @@ Update alongside the code:
   Required after any consequential change.
 - [docs/system-overview.md](docs/system-overview.md) — how the system works.
 - [docs/brief-validation.md](docs/brief-validation.md) — status against the event brief.
-- [PRD.md](PRD.md) — the target specification. Changes here are product decisions.
+- [PRD.md](PRD.md) — the target specification, currently **v1.1**. Changes here are product
+  decisions. [docs/PRD-v1.0-superseded.md](docs/PRD-v1.0-superseded.md) is retained for history
+  only; do not build against it.
 
 Keep status truthful. Running out of context is not completion.
