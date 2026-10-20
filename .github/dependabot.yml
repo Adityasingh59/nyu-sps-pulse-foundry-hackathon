@@ -16,9 +16,11 @@ updates:
       build-tooling:
         patterns: ["vite", "@vitejs/*", "typescript", "tsx", "concurrently"]
     ignore:
-      # The provider CLI is pinned deliberately: its event format is parsed in
-      # server/codex-provider.ts and a silent major bump would break capture.
-      - dependency-name: "@openai/codex"
+      # No major bumps. The event is a fixed date and a breaking upgrade days
+      # before it costs more than it returns. Revisit after October 23, 2026.
+      # @openai/codex is additionally sensitive: its JSON event format is parsed
+      # directly in server/codex-provider.ts.
+      - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
@@ -27,3 +29,6 @@ updates:
       interval: monthly
     commit-message:
       prefix: "ci"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
