@@ -1,11 +1,71 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { codexCommand } from "../server/codex-command.ts";
 import {
+  codexBinary,
   parseCodexEvents,
   sanitizeCitations,
 } from "../server/codex-provider.ts";
 const stream = (...events: unknown[]) =>
   events.map((e) => JSON.stringify(e)).join("\n");
+test("local CLI command uses Node and the installed JavaScript entry point", () => {
+  const args = ["login", "status"];
+  const command = codexCommand(args, { executableOverride: "" });
+  assert.equal(command.executable, process.execPath);
+  assert.equal(command.args[0], command.installedPath);
+  assert.match(
+    command.installedPath,
+    /node_modules[/\\]@openai[/\\]codex[/\\]bin[/\\]codex\.js$/,
+  );
+  assert.deepEqual(command.args.slice(1), args);
+});
+test("CLI launcher preserves spaced paths and arguments without a shell", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "tablesignal CLI fixture "));
+  try {
+    const launcherPath = join(directory, "fake CLI launcher.mjs");
+    await writeFile(
+      launcherPath,
+      "process.stdout.write(JSON.stringify(process.argv.slice(2)));\n",
+    );
+    const args = ["--output-schema", join(directory, "answer schema.json"), "a;b"];
+    const command = codexCommand(args, {
+      executableOverride: "",
+      launcherPath,
+    });
+    const result = spawnSync(command.executable, command.args, {
+      cwd: tmpdir(),
+      encoding: "utf8",
+      timeout: 5000,
+      windowsHide: true,
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(result.stdout), args);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+test("custom CLI executable remains a direct executable override", () => {
+  const executable = join(tmpdir(), "custom tools", "codex.exe");
+  const args = ["exec", "--json", "-"];
+  const previous = process.env.TABLESIGNAL_CODEX_PATH;
+  try {
+    process.env.TABLESIGNAL_CODEX_PATH = executable;
+    assert.equal(codexBinary(), executable);
+    assert.deepEqual(codexCommand(args), {
+      executable,
+      args,
+      installedPath: executable,
+    });
+  } finally {
+    if (previous === undefined) delete process.env.TABLESIGNAL_CODEX_PATH;
+    else process.env.TABLESIGNAL_CODEX_PATH = previous;
+  }
+});
 test("live CLI adapter requires completed turns and recorded web retrieval", () => {
   assert.throws(
     () => parseCodexEvents(stream({ type: "turn.failed" })),

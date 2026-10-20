@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { resolve, join } from "node:path";
+import { join } from "node:path";
+import { codexCommand } from "../server/codex-command.ts";
 const cwd = await mkdtemp(join(tmpdir(), "tablesignal-probe-"));
 const args = [
   "exec",
@@ -37,9 +38,11 @@ const args = [
   "project_doc_max_bytes=0",
   "-",
 ];
-const child = spawn(resolve("node_modules/.bin/codex"), args, {
+const command = codexCommand(args);
+const child = spawn(command.executable, command.args, {
   cwd,
   stdio: ["pipe", "pipe", "pipe"],
+  windowsHide: true,
   env: process.env,
 });
 let output = "",

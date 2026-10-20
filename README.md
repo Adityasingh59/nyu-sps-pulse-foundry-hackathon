@@ -4,17 +4,29 @@ TableSignal measures how a restaurant appears in a saved set of AI dining recomm
 
 The real case study is **John’s of Bleecker Street, New York City**, using its [official website](https://johnsofbleecker.com/) and [food menu](https://johnsofbleecker.com/food-menu). The local database preserves the collected evidence and actual provider responses. Public-source review does not imply ownership, affiliation, or permission to publish on the restaurant’s website.
 
-## Run
+## Run on your computer
 
-Use Node.js 24 or newer.
+Install **Git and Node.js 24 or newer** (npm is included), then run:
 
 ```sh
-npm install
-npm run build
-npm run up
+git clone https://github.com/Adityasingh59/nyu-sps-pulse-foundry-hackathon.git
+cd nyu-sps-pulse-foundry-hackathon
+npm ci
+npm run setup
 ```
 
-Open <http://127.0.0.1:3001>. `npm run up` starts a detached local supervisor that restarts the application after an unexpected exit. `npm run local:status` checks it; `npm run down` stops the managed application. It does not install an operating-system login service. `npm start` remains available for foreground operation. For development, `npm run dev` starts the API on 3001 and Vite on 5173. The API binds to loopback; this is a single-operator local application. Default records are stored in `data/tablesignal.sqlite` and survive restarts. Do not delete that database to restart the project.
+Open **<http://127.0.0.1:3001>**. On Windows PowerShell, use `npm.cmd ci` and `npm.cmd run setup` if script execution is blocked. If you already cloned the project, run the last two commands from its folder. Setup builds the UI and starts the app in the background; it makes no live model calls.
+
+The [team setup guide](docs/team-setup.md) includes Windows, macOS, and Linux instructions, updating after a pull, development, optional provider sign-in, and troubleshooting. Each clone starts with the clearly labeled **Linden Table synthetic example** and has its own SQLite database. This computer's saved live runs and provider credentials are not included in Git; the reviewed real case study is available in [reports/](reports/).
+
+| Task | Command |
+| --- | --- |
+| Start again after a reboot | `npm run up` |
+| Check the server | `npm run local:status` |
+| Stop the background server | `npm run down` |
+| Develop with live reload | `npm run dev` (open port 5173) |
+
+`npm run up` starts a detached local supervisor that restarts the application after an unexpected exit. It does not install an operating-system login service. `npm start` runs in the foreground after a build. Stop the managed server before starting development or foreground mode on the same API port. The API binds to loopback; this is a single-operator local application. Default records are stored in `data/tablesignal.sqlite` and survive pulls, installs, builds, and restarts. Do not delete that database to restart the project.
 
 ## Live provider
 

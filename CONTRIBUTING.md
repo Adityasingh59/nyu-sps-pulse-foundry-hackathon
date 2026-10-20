@@ -10,9 +10,8 @@ Node.js 24 or newer is required (`node:sqlite` and the test runner depend on it)
 `.nvmrc` pins the version; run `nvm use` if you use nvm.
 
 ```sh
-npm install
-npm run build
-npm run up          # detached supervisor on http://127.0.0.1:3001
+npm ci
+npm run setup      # build + detached supervisor on http://127.0.0.1:3001
 npm run local:status
 npm run down
 ```
@@ -20,14 +19,17 @@ npm run down
 For development, `npm run dev` runs the API on 3001 and Vite on 5173. Stop the dev
 server before starting the built server on the same port.
 
+See the [team setup guide](docs/team-setup.md) for cloning, Windows PowerShell
+commands, optional provider access, and pulling updates without losing local data.
+
 ## Before you push
 
 ```sh
-npm test            # 42 tests, temporary databases, no model calls
 npm run build       # tsc --noEmit && vite build
+npm test            # temporary databases, no model calls
 ```
 
-CI runs exactly these two commands, plus a guard job that fails if a database or
+CI runs these checks on Windows, macOS, and Linux, plus a guard job that fails if a database or
 environment file becomes tracked or a credential-shaped string appears in the
 repository.
 
