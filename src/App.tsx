@@ -163,9 +163,18 @@ export default function App() {
   const load = useCallback(async () => {
     const next = await api<Bootstrap>("/bootstrap");
     setData(next);
+    let savedRestaurantId = "";
+    try {
+      savedRestaurantId = localStorage.getItem("tablesignal.restaurantId") || "";
+    } catch {
+      // The workspace still works when browser storage is unavailable.
+    }
     setRestaurantId(
       (prev) =>
-        prev ||
+        (next.restaurants.some((r) => r.id === prev) ? prev : "") ||
+        (next.restaurants.some((r) => r.id === savedRestaurantId)
+          ? savedRestaurantId
+          : "") ||
         next.preferredRestaurantId ||
         next.restaurants.find(
           (r) => !r.facts.some((f) => f.provenance === "synthetic"),
@@ -175,6 +184,14 @@ export default function App() {
         "",
     );
   }, []);
+  useEffect(() => {
+    if (!restaurantId) return;
+    try {
+      localStorage.setItem("tablesignal.restaurantId", restaurantId);
+    } catch {
+      // Storage restrictions must not prevent selecting a workspace.
+    }
+  }, [restaurantId]);
   useEffect(() => {
     load().catch((e) => setError(e.message));
   }, [load]);
@@ -1630,7 +1647,7 @@ function Competitors({
   const target = run.competitors.find((c) => c.entityId === restaurantId);
   const chosen = run.competitors
     .filter((c) => c.entityId !== restaurantId)
-    .slice(0, 3);
+    .slice(0, 5);
   const displayed = [...(target ? [target] : []), ...chosen].sort(
     (a, b) => b.appearances - a.appearances,
   );
@@ -1655,14 +1672,21 @@ function Competitors({
   return (
     <div className="competitor-list">
       {all.length ? (
-        all.map((c, i) => (
+        all.map((c) => (
           <div
             className={`competitor-row ${c.isTarget ? "is-target" : ""}`}
             key={c.entityId}
           >
             <div className="competitor-name">
               <span className="competitor-index">
-                {String(i + 1).padStart(2, "0")}
+                {c.entityId === "others"
+                  ? "—"
+                  : String(
+                      1 +
+                        run.competitors.filter(
+                          (other) => other.appearances > c.appearances,
+                        ).length,
+                    ).padStart(2, "0")}
               </span>
               <strong>{c.name}</strong>
               {c.isTarget && <span className="you-tag">YOU</span>}
