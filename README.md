@@ -2,7 +2,9 @@
 
 TableSignal measures how a restaurant appears in a saved set of AI dining recommendations, connects findings to public source snapshots, creates reviewable content, and repeats the same measurement.
 
-The real case study is **John’s of Bleecker Street, New York City**, using its [official website](https://johnsofbleecker.com/) and [food menu](https://johnsofbleecker.com/food-menu). The local database preserves the collected evidence and actual provider responses. Public-source review does not imply ownership, affiliation, or permission to publish on the restaurant’s website.
+The selected example is **Gandhi Cafe, 283 Bleecker Street, New York City**, an Indian restaurant near NYU's Washington Square campus, using its [official website](https://gandhicafeny.com/). It was recommended in **2 of 20 valid answers (10%, 100% coverage)**, outside the five most frequently recommended restaurants in this sample. This is a scoped observation, not a citywide quality ranking. See the [case study](reports/gandhi-cafe-case-study.md) and [checkpoint](docs/PROGRESS.md). Select Gandhi Cafe in the restaurant chooser; the browser remembers the selection across refreshes.
+
+The earlier **John’s of Bleecker Street** case study, collected evidence and actual provider responses remain preserved. Public-source review does not imply ownership, affiliation, or permission to publish on any restaurant's website.
 
 ## Run on your computer
 
@@ -52,7 +54,7 @@ A server-side `OPENAI_API_KEY` selects the alternative Responses API/web-search 
 6. Review evidence-backed opportunities. Generate, edit and export a FAQ, restaurant copy, or Restaurant JSON-LD with a nested menu from accepted item/price facts.
 7. Repeat the saved bank and settings, then compare only matched valid observations. Variation does not establish the effect of an edit.
 
-The saved NYC setup has repeatable commands after the API starts:
+The historical John's of Bleecker Street setup has repeatable commands after the API starts (these do not run the new Gandhi Cafe example):
 
 ```sh
 npm run setup:nyc
@@ -72,5 +74,7 @@ npm run build
 Tests use temporary databases and ephemeral ports; they do not call the model or erase local data. Coverage includes metrics, conservative parsing, source provenance, safe fetching and robots rules, immutable artifact versions, nested menu validation, independent provider capture, restart recovery, request ceilings and audit records.
 
 Read [docs/PROGRESS.md](docs/PROGRESS.md) to resume across sessions. [AGENTS.md](AGENTS.md) preserves the current authorization and safeguards. [docs/system-overview.md](docs/system-overview.md) explains how the system works, technically and non-technically; [docs/implementation.md](docs/implementation.md) records design decisions and limits.
+
+For the team: [Vasu's handoff — what works, limitations and next steps](docs/vasu-handoff.md).
 
 [PRD.md](PRD.md) is the current target specification (**v1.1**); [docs/brief-validation.md](docs/brief-validation.md) tracks delivered scope against it and against the event brief. v1.1 raised P0 considerably, so several of its requirements are not yet built — the validation document is the authoritative gap list. [docs/PRD-v1.0-superseded.md](docs/PRD-v1.0-superseded.md) is retained for history only.

@@ -1,8 +1,32 @@
 # Project checkpoint
 
-Last verified: **October 20, 2026 (America/New_York)**.
+Last verified: **October 21, 2026 (America/New_York)**.
 
-## Current outcome
+## Current task — Indian example near NYU, October 21
+
+The user requested an Indian restaurant near NYU's Washington Square campus that is outside the top five observed recommendations. **Gandhi Cafe, 283 Bleecker Street, New York, NY 10014** (<https://gandhicafeny.com/>) is the new selected example. John's historical data remains intact; Linden Table remains synthetic.
+
+- Gandhi Cafe profile: `restaurant_4aa7d7e9-06e1-466a-967e-3a962c59c132`.
+- Selection screen: `run_74f649c4-1ad1-4268-81f5-1f0653c1344d`, stored under the initially considered Mint Masala profile. All three neutral Indian-restaurant questions completed, five options per answer, with no Gandhi Cafe appearance. This is a scoped screening observation, not an objective citywide rank. Mint Masala's application website fetch returned HTTP 403 and was preserved as failed.
+- Frozen 20-question Indian/NYU bank: `bank_6ef68b4d-68b8-44ef-b789-928ef5c9999d`. **Baseline completed:** `run_36e28381-95b2-41a1-a007-9e4a7cec2db2`, stable idempotency key `gandhi-cafe-indian-nyu-baseline-v1`. Do not start a duplicate. Codex CLI / `gpt-6.1-sol`, **20/20 valid, 0 failures, 2 mentions/recommendations (10%), 100% coverage, 3.03% share of voice, average observed position 2.5 across 2 appearances**. All 20 answers and extracted list entries were manually inspected; no target results were removed or regenerated.
+- Two Gandhi Cafe public pages were fetched and stored with original hashes/times. Phone and menu URL were accepted with `website` provenance; no owner facts were invented. Additional source details/uncertainties are in [restaurant-research.md](restaurant-research.md).
+- The interface now persists the selected restaurant in browser local storage, validates a saved ID against the current database, and tolerates unavailable browser storage. The open Chrome tab is switched to Gandhi Cafe; **selection survived refresh**. The recommendation landscape now shows the five leading competitors plus the target and Others. Numeric labels use recommendation-count rank across all saved names (ties share rank), instead of renumbering a reduced subset and making a lower-ranked target look fourth.
+- **Final `npm run build` passed; final `npm test`: 46 passed, 0 failed, 0 skipped.** Earlier tests overlapped a Vite rebuild and skipped lifecycle; the final full run followed the completed build and includes it. All tests use isolated databases and make no live calls.
+- Historical integrity checkpoint: `data/indian-case-historical-integrity.json`. The final bootstrap comparison confirmed **all original 5 runs / 100 answers retained their IDs and exact raw-answer hashes**.
+- Gandhi Cafe is outside the top five by recommendation frequency: six distinct businesses appeared more often. **Name-normalization limitation:** the parser split Masala Times (3) and Masala Times Greenwich Village (10), despite all answers identifying 194 Bleecker Street. Reviewed combined count: 13/20. The app ranks Gandhi eighth among saved names; it is seventh among distinct businesses. This does not affect the 2/20 target rate or the outside-five conclusion. No historical extraction was silently merged.
+- Leading observed competitors were selected before evidence collection. Mint Masala's site returned 403 and Masala Times' robots check returned 403; both remain unavailable, not absent information. Thelewala's cited matching homepage was collected. Source-backed findings are a machine-readable menu and a dining FAQ, scoped to the two target snapshots. No fabricated third opportunity or unsupported competitive advantage was added.
+- New deliverables: [case study](../reports/gandhi-cafe-case-study.md), [FAQ](../reports/gandhi-cafe-faq.md), [about draft](../reports/gandhi-cafe-about.md), [Restaurant JSON-LD](../reports/gandhi-cafe-jsonld.json). The three drafts validated and remain in Content studio, IDs `artifact_dd835ce9-559f-4818-af76-d547862d78d9`, `artifact_af606e69-27ba-4cc2-9d51-a14cbb0de0cd`, `artifact_f25397d5-3894-42ec-89a1-4627fdfd92a3`. With only two accepted profile facts, the drafts are deliberately sparse: no unaccepted hours, prices or dietary assurances; JSON-LD has no invented nested menu items. Evidence report: `data/run_36e28381-95b2-41a1-a007-9e4a7cec2db2-evidence-report.json`.
+- Final Chrome check confirmed Gandhi Cafe remains selected after refresh, the completed 10% / 100% scorecard, five leading competitor rows plus the target, and two opportunities. Desktop screenshot: [overview](../reports/gandhi-cafe-overview.png). The local supervisor remains healthy at <http://127.0.0.1:3001>; no model jobs remain active. This browser check covers this desktop overview, not every page or mobile layout.
+
+**Next concrete action:** use the saved Gandhi Cafe example for the demo; review additional operational facts against the original public snapshots before enriching its drafts. A future explicit competitor-alias review can merge the two observed Masala Times names without changing raw answers. No follow-up run or publication has been requested. The remaining PRD v1.1 gaps in `brief-validation.md` are still open.
+
+## GitHub handoff — October 21
+
+The user requested pushing the updates with clear commit messages and a GitHub note for Vasu. [Vasu's handoff](vasu-handoff.md) distinguishes working scope, limitations, missing v1.1 features and fresh-clone behavior. The private repository is `Adityasingh59/nyu-sps-pulse-foundry-hackathon`; `@Vasusolanki811` is an existing collaborator. The user also requested `@mallikagadgil19` and `@JaydenPeerize511`: both received **write-access invitations**, pending acceptance when created. No Google Drive update was requested after clarification.
+
+Before this push, `main` matched `origin/main` at `5b74884`. The previous cross-platform setup workflow has now been verified in GitHub Actions: Linux, Windows and macOS jobs all succeeded. Rebuilt the current UI before the final local test run; no new provider calls were started. This push includes source, documentation, reviewed public case-study outputs and a screenshot; default SQLite data and authentication remain excluded.
+
+## Earlier completed outcome: John's of Bleecker Street
 
 The user asked to make the fictional prototype work with a real NYC restaurant, run it using available access, and preserve work across token/session restarts. That real-data functional path is now implemented and verified. Preserve the current database and saved outputs; do not restart from synthetic fixtures or repeat completed model calls without a new reason.
 
@@ -20,7 +44,7 @@ The latest requested work is to run the app and make it straightforward for team
 - `npm ci` succeeded (0 reported vulnerabilities), `npm run setup` succeeded, and **46 tests passed, 0 failed, 0 skipped** after the build. Lifecycle tests use temporary databases/runtime directories and verify exact synthetic answer hashes, timestamps, and IDs survive restart. HTTP checks confirmed health, the built HTML, JavaScript and CSS are served successfully.
 - A separate clean-install smoke check copied only current source into a temporary directory with spaces (no existing dependencies, build, database, Git metadata or credentials). `npm ci` then `npm run setup` succeeded; health/UI returned 200 and bootstrap contained only the synthetic workspace. Managed shutdown completed and the temporary copy was removed. This check used macOS; Windows/Linux execution remains pending CI.
 - The existing default database retained **5 saved runs and 100 answer records**, with an identical combined ID/raw-answer SHA-256 before and after the startup changes: `b695185bb53e0b51008b06f19537c72bc8f59fc41c801f30977bc2d2f03deb6c`. This count includes synthetic records; it does not change the completed live measurements described below. No new live provider runs were started.
-- Changes are currently in the local working tree. They must be committed and pushed before teammates can pull this new setup workflow from GitHub.
+- Historical note: this setup workflow was subsequently committed as `5b74884` and pushed. Its Linux, Windows and macOS Actions jobs all succeeded; see the October 21 GitHub handoff above for the latest update.
 
 ## Real restaurant and provider
 

@@ -1,0 +1,9 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Restaurant",
+  "name": "Gandhi Cafe",
+  "url": "https://gandhicafeny.com/",
+  "address": "283 Bleecker Street, Greenwich Village, New York, NY 10014",
+  "menu": "https://gandhicafeny.com/gandhi-cafe/",
+  "telephone": "19142151655"
+}

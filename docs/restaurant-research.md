@@ -1,4 +1,18 @@
-# Restaurant research: John's of Bleecker Street
+# Restaurant research
+
+## Current example: Gandhi Cafe — October 21, 2026 (America/New_York)
+
+The user requested an Indian restaurant near NYU's Washington Square campus that does not appear in the top five recommendations. The new target is **Gandhi Cafe**, **283 Bleecker Street, Greenwich Village, New York, NY 10014**, official website <https://gandhicafeny.com/>. The site writes the address as `283 Bleecker St #4107`; the meaning of `#4107` is unverified. Keep the original wording in snapshots. No exact walking time was measured.
+
+- Selection evidence: run `run_74f649c4-1ad1-4268-81f5-1f0653c1344d`, saved under the initially considered Mint Masala profile. Three independent, neutral Indian-restaurant questions returned five recommendations each. Neither Gandhi Cafe nor Mint Masala appeared. The target profile is never passed to the answering adapter, so these answers are usable screening evidence without moving or relabeling their original records.
+- This is absence from three particular five-option lists, **not** a citywide quality ranking or proof of universal invisibility. The separate 20-question Gandhi Cafe baseline is `run_36e28381-95b2-41a1-a007-9e4a7cec2db2`; preserve all outcomes, including any recommendations of the target.
+- Completed baseline: **2/20 mentions/recommendations, 10%, 100% coverage, no failed answers**. Six distinct competitors were recommended more often. The target's two positive appearances (casual date and family meal) remain intact. See [the case study](../reports/gandhi-cafe-case-study.md) for questions, sources, counts, and the known Masala Times name-variant split.
+- Gandhi Cafe's homepage and linked location page were actually fetched at `2026-10-22T02:31:45Z` (October 21 in New York), with their individual timestamps and original HTML hashes in SQLite. They identify the branch and advertise Indian food. The homepage lists a phone link and menu link; those two extracted facts were reviewed with `website` provenance. Other operational facts were not entered as owner facts.
+- Official pages: <https://gandhicafeny.com/> and <https://gandhicafeny.com/gandhi-cafe/locations/>. No JSON-LD script was found in either inspected HTML snapshot. The location page includes a few item/price examples, but those have not been accepted as verified profile menu facts.
+- Mint Masala at 95 MacDougal Street was considered first. The application's fetch returned HTTP 403, retained as a failed snapshot. No access bypass was attempted. Its screening profile/run remain intact.
+- John's of Bleecker Street and the synthetic Linden Table example remain preserved as separate historical workspaces. No restaurant was contacted and no restaurant content was published.
+
+## Historical research: John's of Bleecker Street
 
 Research completed **2026-10-20 05:03:03 UTC**. These are publicly observed website statements, not owner-confirmed facts or permission to modify the business's website. The restaurant has not been contacted.
 
