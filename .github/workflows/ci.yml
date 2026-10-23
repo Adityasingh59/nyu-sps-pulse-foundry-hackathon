@@ -45,6 +45,11 @@ jobs:
       - name: Typecheck and build
         run: npm run build
 
+      # Cloud (Vercel) app. Without Supabase variables it builds and reports
+      # "not configured" at runtime; no secrets are needed in CI.
+      - name: Build cloud app
+        run: npm run cloud:build
+
       # Tests use temporary SQLite files and ephemeral ports. They make no
       # provider calls and never touch data/tablesignal.sqlite.
       - name: Run tests

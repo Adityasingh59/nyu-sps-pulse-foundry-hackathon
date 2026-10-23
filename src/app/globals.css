@@ -1,0 +1,126 @@
+/* Cloud shell styles; tokens match the legacy UI in src/styles.css. */
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #273c33;
+  background: #f7f8f4;
+  font-size: 14px;
+  --green: #183c2f;
+  --muted: #7b857d;
+  --orange: #ed815b;
+  --line: #e5e9e1;
+  --danger: #a43d2a;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input {
+  font: inherit;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid #d9a366;
+  outline-offset: 2px;
+}
+.shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.top h1 {
+  margin: 0;
+  font-size: 20px;
+  color: var(--green);
+}
+.muted {
+  color: var(--muted);
+}
+.panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.panel h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+label {
+  display: grid;
+  gap: 4px;
+  font-weight: 500;
+}
+input {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  min-width: 0;
+}
+.button {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--green);
+  color: #fff;
+  cursor: pointer;
+}
+.button.secondary {
+  background: transparent;
+  color: var(--green);
+  border: 1px solid var(--line);
+}
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.list button {
+  width: 100%;
+  text-align: left;
+  padding: 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  cursor: pointer;
+}
+.list button[aria-current="true"] {
+  background: #eef2ea;
+}
+.error {
+  color: var(--danger);
+}
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+}
+dt {
+  color: var(--muted);
+}
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

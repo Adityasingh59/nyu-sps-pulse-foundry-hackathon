@@ -10,6 +10,9 @@
     "dev:web": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "start": "tsx server/index.ts",
+    "cloud:dev": "next dev --port 3000",
+    "cloud:build": "next build",
+    "cloud:start": "next start --port 3000",
     "test": "tsx --test tests/*.test.ts",
     "provider:status": "codex login status",
     "provider:login": "codex login",
@@ -21,12 +24,16 @@
     "local:status": "node scripts/local.mjs status"
   },
   "dependencies": {
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.117.3",
     "express": "^5.1.0",
     "lucide-react": "^0.468.0",
+    "next": "16.4.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.1.0",

@@ -1,5 +1,8 @@
 node_modules/
 dist/
+.next/
+next-env.d.ts
+.vercel/
 
 # Secrets are read from the shell. Only the reference file is tracked.
 .env
