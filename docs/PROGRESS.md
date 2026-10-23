@@ -1,8 +1,109 @@
 # Project checkpoint
 
-Last verified: **October 21, 2026 (America/New_York)**.
+Last verified: **October 23, 2026 (America/New_York)**.
 
-## Current task — Indian example near NYU, October 21
+## Cloud migration — October 23 (current)
+
+Governing documents: `AGENTS.md`, `Skills/RULES.md`, `Skills/development.md` (currently untracked in Git). The referenced `skills/tablesignal-development/SKILL.md` **does not exist** in this repository; work followed the two files above.
+
+```text
+Milestone / task: M0 — preserve baseline
+Status: verified complete
+Delivered behavior: Baseline recorded at 03de8bf (main, clean apart from untracked Skills/). Node 24.15.0.
+Changed modules: none
+Verification actually run and results: npm run build passed; npm test 46 passed / 0 failed / 0 skipped.
+  Read-only inventory of data/tablesignal.sqlite: 4 restaurants, 4 banks, 8 runs (143 answers),
+  74 sources, 40 opportunities, 7 artifacts, 166 calls, 3 comparisons, 7 idempotency keys.
+  Per-table SHA-256 of all rows recorded in-session; identical again after M1 work (no data changed).
+  Found one live run not described below: run_04a5818b-dab6-46fc-907c-65770fdd482a (Gandhi Cafe,
+  bank_6ef68b4d…, created 2026-10-22T03:55Z, UI-generated idempotency key, 20/20 valid,
+  stored recommendation rate 5%, coverage 100%). It is preserved as-is; it has not been reviewed
+  or used in any report, and the Gandhi case study still refers to run_36e28381….
+Remaining limitations / blockers: none for M0.
+Next concrete action: M1.
+```
+
+```text
+Milestone / task: M1 — cloud vertical slice (restaurant create/read with workspace isolation)
+Status: in progress — locally verified; deployment blocked on a Supabase project
+Delivered behavior:
+  - Next.js 16 App Router app in the same repo (src/app, src/server, src/proxy.ts) beside the
+    unchanged legacy Express/Vite app. Supabase email magic-link sign-in (PKCE callback),
+    session refresh proxy, sign-out, personal workspace, create/list/reload restaurants.
+    Website is optional; entered identity is stored as identity_source='manual'; no facts accepted.
+  - supabase/migrations/20261023000000_workspace_restaurants.sql: workspaces, workspace_members,
+    restaurants (workspace_id on every row, composite unique for future child FKs, legacy-compatible
+    text IDs), RLS on all tables, least-privilege grants (no DELETE, tenant/identity columns not
+    updatable), server-controlled membership via idempotent ensure_personal_workspace().
+  - Async TenantRepository interface + Supabase implementation using the caller's session (RLS
+    applies); service layer validates input and checks membership/role before storage.
+    Cross-tenant reads return 404. Mutations need same-host Origin, JSON, <=16 KB. no-store responses.
+  - server/ids.ts (pure id/hash/now) and server/validation.ts extracted from store.ts / index.ts so
+    cloud code does not import node:sqlite; legacy imports unchanged in behavior.
+  - Material additions: next@16.4.2, @supabase/ssr@0.12.7, @supabase/supabase-js@2.117.3 (planned
+    stack, exact pins). next 16.4.0 had critical advisories (GHSA-2464-fhr4-w9xw etc.); 16.4.2 audits
+    clean. @electric-sql/pglite@0.5.8 (dev only) runs the real migration/RLS in tests without Docker.
+    vercel.json, next.config.ts (security headers), cloud:dev/build/start scripts, CI cloud build step.
+Changed modules: server/ids.ts, server/validation.ts, server/store.ts, server/index.ts,
+  server/collector.ts, server/real-analysis.ts (imports only); src/app/**, src/server/**, src/lib/**,
+  src/proxy.ts; supabase/migrations/; tests/cloud-schema.test.ts, tests/cloud-restaurants.test.ts;
+  package.json/lock, tsconfig.json (Next-added isolatedModules/plugin), .gitignore, .env.example,
+  .github/workflows/ci.yml, vercel.json, next.config.ts; docs/cloud-deployment.md, README.md.
+Verification actually run and results:
+  - npm run build (tsc + Vite) passed; npm run cloud:build (next build) passed.
+  - npm test: 51 passed / 0 failed / 0 skipped (46 existing + 5 new). New tests apply the migration
+    to PGlite with Supabase-style auth/role stubs: cross-tenant select/update/insert, self-granted
+    membership, moving rows between workspaces, delete and anonymous access are all denied.
+  - Local `next start` smoke test on an ephemeral port without Supabase: health reports
+    "not configured", data routes 503, cross-origin POST 403, same-origin POST reaches the handler,
+    security/no-store headers present. This found and fixed an Origin-vs-request.url host bug.
+  - Built server bundle contains no node:sqlite import; no secret variable names in static assets.
+  - Default database per-table hashes unchanged.
+Remaining limitations / blockers:
+  - BLOCKED: no Supabase project/access in this session (Supabase connector not authorized, no CLI,
+    Docker daemon not running). Real Supabase Auth, PostgREST and RLS-on-Supabase are unverified.
+  - Not deployed. Vercel is connected (team adityasingh59s-projects) but no TableSignal project was
+    created: a deployment without Supabase cannot meet the gate, and linking requires pushing.
+  - Exit gate (deployed preview creates/reloads a restaurant; another workspace cannot access it)
+    NOT met. Checklist in docs/cloud-deployment.md.
+  - Legacy data not imported (development.md deployment step 7: tested copy, preserved IDs/hashes).
+  - Single personal workspace per user; no invitations/roles UI yet.
+Next concrete action: user provides a Supabase preview project (or authorizes the Supabase
+  connector) and approves creating the Vercel project + pushing; then apply the migration, set the
+  two public env vars, deploy a preview and run the M1 acceptance checklist. M2 work (outbox/Inngest,
+  provider adapter) can start meanwhile but M1 stays open until the deployed check passes.
+```
+
+Update, October 23 (later): the user shared a Supabase project (ref `vsuexongedxmjgicgoce`) and a
+Vercel account name for Vasu (`vasusolanki114-2227`).
+- The project's direct database host resolves to IPv6 only; this Mac has no IPv6 route, so a
+  direct connection is not possible from here (the IPv4 session pooler would be needed).
+- Running SQL with the database password pasted in chat was **denied by the permission system**
+  (credential handling). It was not retried, written to disk or worked around. Nothing has been
+  applied to the Supabase project. The password should be rotated because it appeared in chat.
+- The connected Vercel account (adityasingh59s-projects) gets HTTP 403 for `vasusolanki114-2227`;
+  no project was created in either account.
+- Added `supabase/verify/m1_rls_check.sql`: a self-cleaning SQL-editor isolation check. Two new
+  PGlite tests prove it passes on the migration, leaves no rows, and fails with a named reason
+  (rolled back) when a leaking policy is added. `tests/cloud-schema.test.ts`: 4 passed.
+- Still needed: migration + check run in the Supabase SQL editor by the user; the project URL and
+  publishable key; a decision on which Vercel account hosts the app.
+
+Update, October 23 (latest): the user reported Supabase step 1 done (migration applied in the SQL
+editor; the m1_rls_check.sql output was not observed here) and provided the publishable key. Vasu
+will create the Vercel project and add the variables; see `notes.md`.
+- External anonymous probe with the publishable key: `restaurants`, `workspaces`,
+  `workspace_members` all return 42501 permission denied (tables exist; an unknown table returns
+  PGRST205), and RPC `ensure_personal_workspace` as anon returns 42501. Auth settings: email
+  enabled, sign-ups open, email confirmation required.
+- Built Next app run locally against this project: `/api/health` → `storage: supabase`; data
+  routes signed out → 401; `/` → 307 to `/login`; sign-in form renders. No account was created.
+- Work committed on branch `cloud/m1-workspace-restaurants` for Vasu's Vercel import (not `main`).
+- M1 remains **in progress**: real sign-in, deployed create/reload and two-account isolation on a
+  Vercel preview are unverified. Next action: Vasu deploys the branch and runs the checklist in
+  docs/cloud-deployment.md; then record the URL, commit and results here.
+
+## Previous task — Indian example near NYU, October 21
 
 The user requested an Indian restaurant near NYU's Washington Square campus that is outside the top five observed recommendations. **Gandhi Cafe, 283 Bleecker Street, New York, NY 10014** (<https://gandhicafeny.com/>) is the new selected example. John's historical data remains intact; Linden Table remains synthetic.
 

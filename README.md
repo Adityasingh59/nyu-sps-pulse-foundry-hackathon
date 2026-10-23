@@ -6,6 +6,8 @@ The selected example is **Gandhi Cafe, 283 Bleecker Street, New York City**, an 
 
 The earlier **John’s of Bleecker Street** case study, collected evidence and actual provider responses remain preserved. Public-source review does not imply ownership, affiliation, or permission to publish on any restaurant's website.
 
+A hosted multi-restaurant version (Next.js on Vercel with Supabase) is being built in the same repository; so far it covers sign-in, workspaces and restaurant identities, and it has not been deployed yet. See [cloud deployment](docs/cloud-deployment.md). The local app below remains the complete workflow.
+
 ## Run on your computer
 
 Install **Git and Node.js 24 or newer** (npm is included), then run:
