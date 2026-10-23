@@ -1,14 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import { createHash, randomUUID } from "node:crypto";
-
-export const id = (prefix: string) => `${prefix}_${randomUUID()}`;
-export const hash = (value: unknown) =>
-  createHash("sha256")
-    .update(typeof value === "string" ? value : JSON.stringify(value))
-    .digest("hex");
-export const now = () => new Date().toISOString();
+export { hash, id, now } from "./ids.ts";
 export type Table =
   | "restaurants"
   | "banks"

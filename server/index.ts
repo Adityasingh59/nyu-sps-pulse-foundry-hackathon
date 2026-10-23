@@ -45,24 +45,9 @@ import {
 import type { ProviderSettings } from "./providers.ts";
 import { collectCompetitorEvidence } from "./competitive-evidence.ts";
 import { hash, id, now, Store } from "./store.ts";
+import { ApiError, textInput } from "./validation.ts";
 
 const DEMO_ID = "restaurant_linden";
-class ApiError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-function textInput(value: unknown, field: string, max = 400): string {
-  if (typeof value !== "string" || !value.trim() || value.length > max)
-    throw new ApiError(
-      400,
-      `${field} must be a non-empty string of at most ${max} characters.`,
-    );
-  return value.trim();
-}
 function requireEntity<T>(
   store: Store,
   table: Parameters<Store["get"]>[0],

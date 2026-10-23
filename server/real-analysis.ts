@@ -6,7 +6,7 @@ import type {
   Run,
   SourceSnapshot,
 } from "../shared/types.ts";
-import { id } from "./store.ts";
+import { id } from "./ids.ts";
 const manual = (source: SourceSnapshot) =>
   source.sourceKind === "manual" ||
   /^(Owner-|Manually entered|Profile review)/.test(source.title);

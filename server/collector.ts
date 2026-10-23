@@ -3,7 +3,7 @@ import https from "node:https";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import type { SourceSnapshot, Restaurant } from "../shared/types.ts";
-import { hash, id, now } from "./store.ts";
+import { hash, id, now } from "./ids.ts";
 import { inspectPageEvidence, type EvidenceLink } from "./evidence.ts";
 export { visibleText } from "./evidence.ts";
 
