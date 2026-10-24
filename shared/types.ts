@@ -1,11 +1,6 @@
 export type EvidenceMode = "synthetic" | "live";
 export type RunStatus =
-  | "queued"
-  | "running"
-  | "completed"
-  | "partial"
-  | "failed"
-  | "cancelled";
+  "queued" | "running" | "completed" | "partial" | "failed" | "cancelled";
 export interface ProfileFact {
   evidenceSpan?: string;
   field: string;
@@ -15,6 +10,9 @@ export interface ProfileFact {
   confirmed: boolean;
 }
 export interface Restaurant {
+  /** Missing on historical records, which retain restaurant behavior. */
+  businessType?: "restaurant" | "business";
+  category?: string;
   collectionStatus?: "collecting" | "completed" | "failed";
   collectionError?: string;
   lastCollectedAt?: string;

@@ -21,6 +21,7 @@ export function competitorDomainMatches(
     const url = validatePublicUrl(urlString);
     if (thirdParty.test(url.hostname)) return false;
     const name = normalize(nameString);
+    if (!name) return false;
     const host = normalize(url.hostname.replace(/^www\./, ""));
     const tokens = (
       nameString
@@ -100,7 +101,7 @@ export function relevantBranchPage(
 export async function collectCompetitorEvidence(
   run: Run,
   target: Restaurant,
-  save: (source: SourceSnapshot) => void,
+  save: (source: SourceSnapshot) => unknown,
 ): Promise<string[]> {
   const leading = run.competitors.filter((c) => !c.isTarget).slice(0, 3);
   const warnings: string[] = [];
@@ -118,15 +119,17 @@ export async function collectCompetitorEvidence(
       aliases: [],
       website,
       location: target.location,
+      businessType: target.businessType,
+      category: target.category,
       facts: [],
       createdAt: new Date().toISOString(),
     };
     let successful = 0;
     await collectSources(
       candidate,
-      (source) => {
+      async (source) => {
         if (source.status === "succeeded") successful++;
-        save({
+        await save({
           ...source,
           sourceKind: "website",
           scope: "competitor",

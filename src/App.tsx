@@ -78,8 +78,8 @@ const percent = (n: number | null | undefined) =>
   n == null ? "—" : `${Number(n.toFixed(1))}%`;
 const typeNames: Record<ArtifactType, string> = {
   faq: "Customer FAQ",
-  about: "Restaurant copy",
-  jsonld: "Restaurant structured data",
+  about: "Business introduction",
+  jsonld: "Business structured data",
 };
 const targetAppearance = (result: QueryResult, targetId: string) => {
   const found = result.appearances.filter((a) => a.entityId === targetId);
@@ -118,7 +118,7 @@ const sourceLabel = (source: SourceSnapshot) =>
           /^(Owner-|Manually entered|Profile review)/.test(source.title)
         ? "Manual input / review record"
         : source.scope === "competitor"
-          ? `Competitor source · ${source.entityName || "observed restaurant"}`
+          ? `Competitor source · ${source.entityName || "observed business"}`
           : source.status === "failed"
             ? "Retrieval failed"
             : "Collected source";
@@ -165,7 +165,8 @@ export default function App() {
     setData(next);
     let savedRestaurantId = "";
     try {
-      savedRestaurantId = localStorage.getItem("tablesignal.restaurantId") || "";
+      savedRestaurantId =
+        localStorage.getItem("tablesignal.restaurantId") || "";
     } catch {
       // The workspace still works when browser storage is unavailable.
     }
@@ -402,14 +403,14 @@ export default function App() {
               .join("") || "+"}
           </span>
           <div>
-            <strong>{restaurant?.name || "Your restaurant"}</strong>
+            <strong>{restaurant?.name || "Your business"}</strong>
             <span>
               {restaurant?.location.split(",")[0] || "Set up your profile"}
             </span>
           </div>
           <ChevronDown size={15} />
           <select
-            aria-label="Choose restaurant"
+            aria-label="Choose business"
             value={restaurantId}
             onChange={(e) => changeRestaurant(e.target.value)}
           >
@@ -442,8 +443,8 @@ export default function App() {
           <span className="small-spark">
             <Sparkles size={18} />
           </span>
-          <strong>Good food. Better discovered.</strong>
-          <p>A clearer picture of how AI talks about your restaurant.</p>
+          <strong>Your business. Better discovered.</strong>
+          <p>A clearer picture of how AI talks about your business.</p>
           <button onClick={() => setRunModal(true)}>
             Explore your visibility <ArrowUpRight size={15} />
           </button>
@@ -454,13 +455,13 @@ export default function App() {
             onClick={() => setPage("restaurant")}
           >
             <Settings2 size={18} />
-            Restaurant settings
+            Business settings
           </button>
           <div className="operator">
             <span className="avatar">YO</span>
             <div>
               <strong>Your workspace</strong>
-              <span>Local development</span>
+              <span>Your saved analyses</span>
             </div>
             <ShieldCheck size={17} />
           </div>
@@ -472,7 +473,7 @@ export default function App() {
             Workspace <ChevronRight size={13} />
             <span>
               {page === "restaurant"
-                ? "Restaurant settings"
+                ? "Business settings"
                 : nav.find((n) => n.id === page)?.name}
             </span>
           </div>
@@ -524,20 +525,20 @@ export default function App() {
                 {page === "overview"
                   ? "A seat at the AI table."
                   : page === "questions"
-                    ? "What are diners asking?"
+                    ? "What are customers asking?"
                     : page === "opportunities"
                       ? "Small changes. Clearer signals."
                       : page === "content"
                         ? "Your content, ready to work."
                         : page === "measurement"
                           ? "See what actually changes."
-                          : "Get to know your restaurant."}
+                          : "Get to know your business."}
               </h1>
               <p>
                 {page === "overview"
-                  ? "See where your restaurant shows up, who appears alongside it, and what to do next."
+                  ? "See where your business shows up, who appears alongside it, and what to do next."
                   : page === "questions"
-                    ? "A repeatable set of real-world dining questions, without your restaurant name in the prompt."
+                    ? "A repeatable set of customer questions, without your business name in the prompt."
                     : page === "opportunities"
                       ? "Evidence-backed ideas you can review, understand, and act on."
                       : page === "content"
@@ -567,7 +568,7 @@ export default function App() {
                     ? "Analysis in progress"
                     : restaurant?.confirmedAt
                       ? "Run analysis"
-                      : "Confirm restaurant"}
+                      : "Confirm business"}
                   <ArrowUpRight size={16} />
                 </button>
               ) : page === "measurement" ? (
@@ -596,7 +597,7 @@ export default function App() {
                 {!run ? (
                   <>
                     <strong>Research starts with public evidence.</strong>{" "}
-                    Review the restaurant’s source snapshots and confirm its
+                    Review the business’s source snapshots and confirm its
                     identity before measuring recommendations.
                   </>
                 ) : run.mode === "live" ? (
@@ -609,12 +610,12 @@ export default function App() {
                     <strong>You’re exploring a synthetic example.</strong>{" "}
                     {restaurant?.facts.some((f) => f.provenance === "synthetic")
                       ? "Answers, restaurant facts, and source excerpts are fictional demo data."
-                      : "Answers are synthetic demonstration data. Restaurant facts retain their recorded source provenance."}
+                      : "Answers are synthetic demonstration data. Business facts retain their recorded source provenance."}
                   </>
                 )}
               </div>
               <button onClick={() => setPage("restaurant")}>
-                View restaurant <ArrowRight size={14} />
+                View business <ArrowRight size={14} />
               </button>
             </div>
           )}
@@ -666,7 +667,7 @@ export default function App() {
               </div>
               <p>
                 Collecting a bounded set of provider-cited public pages for the
-                leading observed restaurants. Sources and retrieval failures are
+                leading observed businesses. Sources and retrieval failures are
                 saved.
               </p>
             </section>
@@ -747,13 +748,13 @@ export default function App() {
                 <Empty
                   icon={Search}
                   title="Your first measurement starts here"
-                  description="Confirm your restaurant, create a question bank, then run an analysis."
+                  description="Confirm your business, review the question bank, then run an analysis."
                   action={
                     <button
                       className="button primary"
                       onClick={() => setPage("restaurant")}
                     >
-                      Set up restaurant <ArrowRight size={16} />
+                      Set up business <ArrowRight size={16} />
                     </button>
                   }
                 />
@@ -816,7 +817,7 @@ export default function App() {
                           </div>
                           <h2>Who’s getting a seat?</h2>
                           <p>
-                            Share of all restaurant recommendations in this run.
+                            Share of all business recommendations in this run.
                           </p>
                         </div>
                         <span className="subtle-icon">
@@ -1180,7 +1181,7 @@ export default function App() {
                   await load();
                   changeRestaurant(next.id);
                   setNotice(
-                    "Restaurant and question bank saved. Collection runs in the background.",
+                    "Business and question bank saved. Collection runs in the background. Review the questions before measuring.",
                   );
                 })
               }
@@ -1198,7 +1199,7 @@ export default function App() {
                   setNotice(
                     factIndexes?.length
                       ? "Selected source facts accepted. Original provenance is preserved."
-                      : "Restaurant identity confirmed. Source facts retain their review status.",
+                      : "Business identity confirmed. Source facts retain their review status.",
                   );
                 })
               }
@@ -1209,7 +1210,7 @@ export default function App() {
               TableSignal <span className="text-dot">·</span> Better
               information. Better decisions.
             </span>
-            <span>Built for the restaurant behind the recommendation.</span>
+            <span>Built for the business behind the recommendation.</span>
           </footer>
         </div>
       </main>
@@ -1263,7 +1264,7 @@ export default function App() {
           <pre className="raw-answer">
             {detail.rawAnswer || "No completed answer is available."}
           </pre>
-          <h3 className="drawer-label">Extracted restaurant appearances</h3>
+          <h3 className="drawer-label">Extracted business appearances</h3>
           <div className="appearances">
             {detail.appearances.length ? (
               detail.appearances.map((a, i) => (
@@ -1283,7 +1284,7 @@ export default function App() {
                 </div>
               ))
             ) : (
-              <p>No restaurant appearances were extracted.</p>
+              <p>No business appearances were extracted.</p>
             )}
           </div>
           <h3 className="drawer-label">Answer citations</h3>
@@ -1431,7 +1432,7 @@ export default function App() {
               <span>
                 {restaurant?.facts.some((f) => f.provenance === "synthetic")
                   ? "Fictional answers for exploring the workflow. Repeat runs use the same fixture and may be unchanged."
-                  : "Available in the separate fictional restaurant example. Real restaurant profiles use live measurement."}
+                  : "Available in the separate fictional example. Real business profiles use live measurement."}
               </span>
             </span>
           </label>
@@ -1455,7 +1456,7 @@ export default function App() {
               </strong>
               <span>
                 {restaurant?.facts.some((f) => f.provenance === "synthetic")
-                  ? "Add and confirm a real restaurant profile to use live measurements."
+                  ? "Add and confirm a real business profile to use live measurements."
                   : data.provider.configured
                     ? `${data.provider.name || data.provider.adapter || "Connected provider"} · ${data.provider.model}`
                     : data.provider.status ||
@@ -1661,7 +1662,7 @@ function Competitors({
           ...displayed,
           {
             entityId: "others",
-            name: `Other restaurants (${remaining.length})`,
+            name: `Other businesses (${remaining.length})`,
             appearances: remaining.reduce((s, c) => s + c.appearances, 0),
             shareOfVoice: others,
             averagePosition: null,
@@ -1833,7 +1834,7 @@ function QuestionWorkspace({
       <div className="panel-heading">
         <div>
           <h2>
-            {restaurant?.name || "Restaurant"}{" "}
+            {restaurant?.name || "Business"}{" "}
             <span className="heading-sub">
               / Question bank {bank ? `v${bank.version}` : ""}
             </span>
@@ -1841,7 +1842,7 @@ function QuestionWorkspace({
           <p>
             {bank
               ? "Saved banks are frozen. Edits create a new version for future measurements."
-              : "Create a restaurant profile to generate a question bank."}
+              : "Create a business profile to generate a question bank."}
           </p>
         </div>
         <div className="button-row">
@@ -1935,7 +1936,7 @@ function QuestionWorkspace({
       </div>
       <div className="table-foot">
         <CircleHelp size={14} /> Questions test preferences; they do not claim
-        your restaurant satisfies them.{" "}
+        your business satisfies them.{" "}
         <span className="bank-hash">{bank?.contentHash.slice(0, 12)}</span>
       </div>
     </section>
@@ -1987,7 +1988,7 @@ function ContentWorkspace({
       <Empty
         icon={PencilLine}
         title="A good draft starts with a useful finding"
-        description="Choose an opportunity to create a FAQ, restaurant copy, or structured data from your known facts."
+        description="Choose an opportunity to create a FAQ, introduction, or structured data from your known facts."
         action={
           <button className="button primary" onClick={onBrowse}>
             Explore opportunities <ArrowRight size={16} />
@@ -2172,7 +2173,7 @@ function ContentWorkspace({
             })
           ) : (
             <p className="small-note">
-              Profile facts. Review the restaurant profile for recorded
+              Profile facts. Review the business profile for recorded
               provenance.
             </p>
           )}
@@ -2503,29 +2504,31 @@ function RestaurantSetup({
   const [name, setName] = useState("");
   const [website, setWebsite] = useState("");
   const [location, setLocation] = useState("");
+  const [businessType, setBusinessType] = useState<"business" | "restaurant">(
+    "business",
+  );
+  const [category, setCategory] = useState("");
   const [selectedFacts, setSelectedFacts] = useState<number[]>([]);
   useEffect(() => setSelectedFacts([]), [restaurant?.id]);
   const synthetic = restaurant?.facts.some((f) => f.provenance === "synthetic");
   const draftFacts = restaurant?.facts.filter((f) => !f.confirmed).length || 0;
   const identityReady = Boolean(
-    restaurant?.name.trim() &&
-      restaurant.location.trim() &&
-      /^https?:\/\//i.test(restaurant.website),
+    restaurant?.name.trim() && /^https?:\/\//i.test(restaurant.website),
   );
   return (
     <div className="setup-grid">
       <section className="panel profile-panel">
         <div className="panel-heading">
           <div>
-            <div className="eyebrow">CANONICAL RESTAURANT PROFILE</div>
-            <h2>{restaurant?.name || "Restaurant profile"}</h2>
+            <div className="eyebrow">BUSINESS PROFILE</div>
+            <h2>{restaurant?.name || "Business profile"}</h2>
           </div>
           <button
             className="button secondary small"
             onClick={() => setAdd(!add)}
           >
             <Plus size={14} />
-            Add restaurant
+            Add business
           </button>
         </div>
         {restaurant && (
@@ -2542,7 +2545,7 @@ function RestaurantSetup({
                 <h3>{restaurant.name}</h3>
                 <p>
                   <MapPin size={14} />
-                  {restaurant.location}
+                  {restaurant.location || "Location not provided"}
                 </p>
                 <p>
                   <Globe2 size={14} />
@@ -2566,10 +2569,10 @@ function RestaurantSetup({
             {!restaurant.confirmedAt && (
               <div className="identity-review">
                 <div>
-                  <strong>Is this the right restaurant and branch?</strong>
+                  <strong>Is this the right business and website?</strong>
                   <p>
-                    Confirm the name, website, and location. Public page
-                    observations are reviewed separately below.
+                    Confirm the name, website, and any supplied location. Public
+                    page observations are reviewed separately below.
                   </p>
                 </div>
                 <button
@@ -2714,39 +2717,71 @@ function RestaurantSetup({
                 name,
                 website,
                 location,
+                businessType,
+                category,
+                ...(businessType === "restaurant" ? { cuisine: category } : {}),
                 facts: [],
               });
             }}
           >
-            <h3>Add a restaurant</h3>
+            <h3>Analyze a business website</h3>
             <p>
-              Start with the public name, website, and branch. Website facts are
-              collected as drafts for source review.
+              Enter a name and public website. Add a category for more useful
+              discovery questions. Website facts are collected as drafts for
+              review.
             </p>
             <label>
-              Restaurant name
+              Business name
               <input
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Your restaurant"
-                maxLength={160}
+                placeholder="e.g. Your business"
+                maxLength={120}
               />
             </label>
             <label>
               Public website
               <input
                 required
-                type="url"
+                type="text"
+                inputMode="url"
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
-                placeholder="https://restaurant.com"
+                placeholder="example.com or https://example.com"
+                maxLength={2000}
               />
             </label>
             <label>
-              Location / branch
+              Business type
+              <select
+                value={businessType}
+                onChange={(e) =>
+                  setBusinessType(e.target.value as "business" | "restaurant")
+                }
+              >
+                <option value="business">General business</option>
+                <option value="restaurant">Restaurant / cafe</option>
+              </select>
+            </label>
+            <label>
+              {businessType === "restaurant"
+                ? "Cuisine (optional)"
+                : "Category (optional)"}
               <input
-                required
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder={
+                  businessType === "restaurant"
+                    ? "e.g. Greek"
+                    : "e.g. bookstores, accounting firms, design software"
+                }
+                maxLength={120}
+              />
+            </label>
+            <label>
+              Location / branch (optional)
+              <input
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Neighborhood, city"
@@ -2755,9 +2790,7 @@ function RestaurantSetup({
             </label>
             <button
               className="button primary"
-              disabled={
-                !!busy || !name.trim() || !website.trim() || !location.trim()
-              }
+              disabled={!!busy || !name.trim() || !website.trim()}
             >
               <Plus size={16} />
               Create profile & question bank
@@ -2877,7 +2910,7 @@ function RestaurantSetup({
           <ShieldCheck size={24} />
           <h3>Unknown is a useful answer.</h3>
           <p>
-            We don’t invent menu items, prices, dietary assurances, hours, or
+            We don’t invent products, services, prices, hours, credentials, or
             awards. Public observations retain their source snapshots and stay
             drafts until reviewed.
           </p>

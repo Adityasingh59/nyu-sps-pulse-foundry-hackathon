@@ -28,6 +28,7 @@ let restaurant = data.restaurants.find(
 if (!restaurant)
   restaurant = await request<Restaurant>("/restaurants", {
     name: "John's of Bleecker Street",
+    businessType: "restaurant",
     website: "https://johnsofbleecker.com/",
     location: "Greenwich Village, New York City",
     aliases: [

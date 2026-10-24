@@ -16,10 +16,111 @@ export function generateQuestions(restaurant: Restaurant): Query[] {
   const cuisine =
     proposedCuisine && !containsIdentity(proposedCuisine)
       ? proposedCuisine
-      : "seasonal";
+      : "local";
+  if (restaurant.businessType === "business") {
+    const proposedCategory = restaurant.category?.trim();
+    const category =
+      proposedCategory && !containsIdentity(proposedCategory)
+        ? proposedCategory
+        : "businesses";
+    const scope =
+      restaurant.location.trim() && !containsIdentity(restaurant.location)
+        ? ` in ${locality}`
+        : "";
+    // No invented locality, currency, product, or restaurant suitability.
+    // These are editable discovery questions, not claims about the target.
+    const templates: [string, string[]][] = [
+      [
+        `Which ${category}${scope} would you recommend to a first-time customer?`,
+        ["discovery", "audience"],
+      ],
+      [
+        `What are well-documented ${category}${scope} worth comparing?`,
+        ["discovery", "information"],
+      ],
+      [
+        `Which ${category}${scope} offer clear information about their products or services?`,
+        ["offering", "information"],
+      ],
+      [
+        `Where can I compare the products or services offered by ${category}${scope}?`,
+        ["offering", "comparison"],
+      ],
+      [
+        `Which ${category}${scope} explain who their products or services are suitable for?`,
+        ["offering", "audience"],
+      ],
+      [
+        `What ${category}${scope} should a budget-conscious customer consider?`,
+        ["price", "audience"],
+      ],
+      [
+        `Which ${category}${scope} publish clear pricing or explain how to request a quote?`,
+        ["price", "information"],
+      ],
+      [
+        `Which ${category}${scope} explain what is included in the price?`,
+        ["price", "comparison"],
+      ],
+      [
+        `Which ${category}${scope} make it easy to find current availability?`,
+        ["availability", "information"],
+      ],
+      [
+        `Which ${category}${scope} clearly explain how to get started?`,
+        ["access", "audience"],
+      ],
+      [
+        `Which ${category}${scope} publish clear contact information?`,
+        ["contact", "information"],
+      ],
+      [
+        `Which ${category}${scope} explain their service area or delivery coverage?`,
+        ["coverage", "access"],
+      ],
+      [
+        `Which ${category}${scope} provide useful answers to common customer questions?`,
+        ["questions", "information"],
+      ],
+      [
+        `Which ${category}${scope} explain their policies before purchase?`,
+        ["policies", "information"],
+      ],
+      [
+        `What ${category}${scope} have independently verifiable customer feedback?`,
+        ["reputation", "comparison"],
+      ],
+      [
+        `Which ${category}${scope} have useful independent coverage or reviews?`,
+        ["reputation", "discovery"],
+      ],
+      [
+        `Which ${category}${scope} clearly describe their experience or qualifications?`,
+        ["trust", "information"],
+      ],
+      [
+        `Which ${category}${scope} provide documented examples of their work or products?`,
+        ["trust", "offering"],
+      ],
+      [
+        `Which ${category}${scope} explain accessibility or customer support options?`,
+        ["access", "support"],
+      ],
+      [
+        `What ${category}${scope} should I compare before making a decision, and why?`,
+        ["comparison", "discovery"],
+      ],
+    ];
+    return templates.map(([text, intents], index) => ({
+      id: `q-${String(index + 1).padStart(2, "0")}`,
+      text,
+      intents,
+      branded: false,
+    }));
+  }
   const templates: [string, string[]][] = [
     [
-      `Where can I get lunch near ${locality} for under $20?`,
+      `Where can I get an affordable lunch near ${locality}?`,
       ["price", "lunch", "locality"],
     ],
     [
@@ -31,7 +132,7 @@ export function generateQuestions(restaurant: Restaurant): Query[] {
       ["price", "occasion"],
     ],
     [
-      `Where can two people eat near ${locality} on a $50 food budget?`,
+      `Where can two people eat near ${locality} on a modest food budget?`,
       ["price", "occasion"],
     ],
     [

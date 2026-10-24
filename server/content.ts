@@ -8,35 +8,47 @@ import type {
   SourceSnapshot,
   QueryBank,
 } from "../shared/types.ts";
-import { hash, id, now, Store } from "./store.ts";
+import { hash, id, now } from "./store.ts";
 
-function sourcesFor(store: Store, restaurantId: string) {
-  return store
-    .all<SourceSnapshot>("sources")
-    .filter((source) => source.restaurantId === restaurantId);
+import type { RecordStore as Store } from "./record-store.ts";
+
+async function sourcesFor(store: Store, restaurantId: string) {
+  return (await store.all<SourceSnapshot>("sources")).filter(
+    (source) => source.restaurantId === restaurantId,
+  );
 }
-export function ensureOpportunities(store: Store, run: Run): Opportunity[] {
-  const saved = store
-    .all<Opportunity>("opportunities")
-    .filter(
-      (opportunity) =>
-        opportunity.runId === run.id &&
-        (opportunity.revision ?? 1) === (run.analysisRevision ?? 1),
-    );
+export async function ensureOpportunities(
+  store: Store,
+  run: Run,
+): Promise<Opportunity[]> {
+  return store.transaction(() => buildOpportunities(store, run));
+}
+async function buildOpportunities(
+  store: Store,
+  run: Run,
+): Promise<Opportunity[]> {
+  const saved = (await store.all<Opportunity>("opportunities")).filter(
+    (opportunity) =>
+      opportunity.runId === run.id &&
+      (opportunity.revision ?? 1) === (run.analysisRevision ?? 1),
+  );
   if (saved.length) return saved;
   if (
     ["queued", "running"].includes(run.status) ||
     run.evidenceStatus === "collecting"
   )
     return [];
-  const restaurant = store.get<Restaurant>("restaurants", run.restaurantId)!;
-  const sources = sourcesFor(store, restaurant.id).filter((source) =>
+  const restaurant = (await store.get<Restaurant>(
+    "restaurants",
+    run.restaurantId,
+  ))!;
+  const sources = (await sourcesFor(store, restaurant.id)).filter((source) =>
     source.scope === "competitor"
       ? source.runId === run.id
       : !run.sourceSnapshotIds || run.sourceSnapshotIds.includes(source.id),
   );
-  if (run.mode === "live") {
-    const bank = store.get<QueryBank>("banks", run.bankId);
+  if (run.mode === "live" || restaurant.businessType === "business") {
+    const bank = await store.get<QueryBank>("banks", run.bankId);
     const findings = buildRealOpportunities(
       run,
       restaurant,
@@ -45,12 +57,13 @@ export function ensureOpportunities(store: Store, run: Run): Opportunity[] {
     );
     if (findings.length) {
       for (const finding of findings)
-        store.put("opportunities", {
+        await store.put("opportunities", {
           ...finding,
           revision: run.analysisRevision ?? 1,
         });
       return findings;
     }
+    if (restaurant.businessType === "business") return [];
   }
   const successful = sources.filter(
     (source) =>
@@ -177,7 +190,7 @@ export function ensureOpportunities(store: Store, run: Run): Opportunity[] {
       });
   }
   for (const opportunity of opportunities)
-    store.put("opportunities", opportunity);
+    await store.put("opportunities", opportunity);
   return opportunities;
 }
 
@@ -197,8 +210,15 @@ export function validateArtifact(
       else {
         if (data["@context"] !== "https://schema.org")
           issues.push("@context must be https://schema.org.");
-        if (data["@type"] !== "Restaurant")
-          issues.push("@type must be Restaurant.");
+        if (!["Restaurant", "Organization"].includes(String(data["@type"])))
+          issues.push("@type must be Restaurant or Organization.");
+        if (
+          data["@type"] === "Organization" &&
+          ["hasMenu", "menu", "servesCuisine"].some((field) => field in data)
+        )
+          issues.push(
+            "Organization drafts must not include restaurant menu or cuisine fields.",
+          );
         if (typeof data.name !== "string" || !data.name.trim())
           issues.push("name must be a non-empty string.");
         for (const field of [
@@ -323,20 +343,36 @@ export function validateArtifact(
   }
   return { valid: issues.length === 0, issues };
 }
-export function createArtifact(
+export async function createArtifact(
   store: Store,
   opportunity: Opportunity,
   type: ArtifactType,
   edited?: string,
   previous?: ArtifactVersion,
-): ArtifactVersion {
-  const run = store.get<Run>("runs", opportunity.runId)!;
-  const restaurant = store.get<Restaurant>("restaurants", run.restaurantId)!;
+): Promise<ArtifactVersion> {
+  return store.transaction(() =>
+    buildArtifact(store, opportunity, type, edited, previous),
+  );
+}
+async function buildArtifact(
+  store: Store,
+  opportunity: Opportunity,
+  type: ArtifactType,
+  edited?: string,
+  previous?: ArtifactVersion,
+): Promise<ArtifactVersion> {
+  const run = (await store.get<Run>("runs", opportunity.runId))!;
+  const restaurant = (await store.get<Restaurant>(
+    "restaurants",
+    run.restaurantId,
+  ))!;
+  const generic = restaurant.businessType === "business";
+  const sourceRecords = await store.all<SourceSnapshot>("sources");
   const verified = restaurant.facts.filter(
     (fact) =>
       fact.confirmed &&
       (!fact.sourceId ||
-        store.get<SourceSnapshot>("sources", fact.sourceId)?.review?.status !==
+        sourceRecords.find((s) => s.id === fact.sourceId)?.review?.status !==
           "rejected"),
   );
   const fact = (field: string) =>
@@ -346,8 +382,7 @@ export function createArtifact(
     (verified.some((f) => f.provenance === "synthetic")
       ? restaurant.cuisine
       : undefined);
-  const ownerIdentitySource = store
-    .all<SourceSnapshot>("sources")
+  const ownerIdentitySource = (await store.all<SourceSnapshot>("sources"))
     .filter(
       (source) =>
         source.restaurantId === restaurant.id &&
@@ -366,16 +401,22 @@ export function createArtifact(
     .filter((f) => f.field === "menuItems")
     .flatMap((f) => f.value.split(/;\s*/))
     .flatMap((value) => {
-      const match = /^(.+?)\s+[—–]\s+\$(\d+(?:\.\d{1,2})?)$/.exec(value);
-      return match
+      const explicit = /^(.+?)\s+\(([A-Z]{3})\s+(\d+(?:\.\d{1,2})?)\)$/.exec(
+        value,
+      );
+      const dollar = /^(.+?)\s+[—–]\s+\$(\d+(?:\.\d{1,2})?)$/.exec(value);
+      const currency = explicit?.[2] || fact("currency");
+      const name = explicit?.[1] || dollar?.[1];
+      const price = explicit?.[3] || dollar?.[2];
+      return name && price && currency && /^[A-Z]{3}$/.test(currency)
         ? [
             {
               "@type": "MenuItem",
-              name: match[1],
+              name,
               offers: {
                 "@type": "Offer",
-                price: Number(match[2]).toFixed(2),
-                priceCurrency: "USD",
+                price: Number(price).toFixed(2),
+                priceCurrency: currency,
               },
             },
           ]
@@ -385,8 +426,10 @@ export function createArtifact(
   if (content === undefined) {
     if (type === "about")
       content = [
-        `${restaurant.name} is located at ${fact("address") || restaurant.location}.`,
-        cuisine && restaurant.confirmedAt
+        fact("address") || restaurant.location
+          ? `${restaurant.name} is located at ${fact("address") || restaurant.location}.`
+          : `${restaurant.name}: ${restaurant.website}`,
+        !generic && cuisine && restaurant.confirmedAt
           ? `The restaurant serves ${cuisine!.toLowerCase()} cuisine.`
           : "",
         ...verified
@@ -407,15 +450,19 @@ export function createArtifact(
     if (type === "faq") {
       const pairs = [
         [
-          "Where is the restaurant?",
-          `${restaurant.name} is located at ${fact("address") || restaurant.location}.`,
+          generic
+            ? "Where can I find this business?"
+            : "Where is the restaurant?",
+          fact("address") || restaurant.location
+            ? `${restaurant.name} is located at ${fact("address") || restaurant.location}.`
+            : `Visit ${restaurant.website}. A physical location has not been confirmed.`,
         ],
         [
           "Where can I find current information?",
           `Visit ${restaurant.website}. Confirm hours, availability, and special requirements directly before visiting.`,
         ],
       ];
-      if (cuisine && restaurant.confirmedAt)
+      if (!generic && cuisine && restaurant.confirmedAt)
         pairs.push([
           "What kind of food do you serve?",
           `${restaurant.name} serves ${cuisine!.toLowerCase()} cuisine, according to the reviewed public profile.`,
@@ -456,17 +503,19 @@ export function createArtifact(
       content = JSON.stringify(
         {
           "@context": "https://schema.org",
-          "@type": "Restaurant",
+          "@type": generic ? "Organization" : "Restaurant",
           name: restaurant.name,
           url: restaurant.website,
-          address: fact("address") || restaurant.location,
-          ...(cuisine && restaurant.confirmedAt
+          ...(fact("address") || restaurant.location
+            ? { address: fact("address") || restaurant.location }
+            : {}),
+          ...(!generic && cuisine && restaurant.confirmedAt
             ? { servesCuisine: cuisine }
             : {}),
-          ...(fact("menuUrl") ? { menu: fact("menuUrl") } : {}),
+          ...(!generic && fact("menuUrl") ? { menu: fact("menuUrl") } : {}),
           ...(fact("description") ? { description: fact("description") } : {}),
           ...(fact("phone") ? { telephone: fact("phone") } : {}),
-          ...(fact("menuUrl") && menuItems.length
+          ...(!generic && fact("menuUrl") && menuItems.length
             ? {
                 hasMenu: {
                   "@type": "Menu",
@@ -486,12 +535,10 @@ export function createArtifact(
         2,
       );
   }
-  const versions = store
-    .all<ArtifactVersion>("artifacts")
-    .filter(
-      (artifact) =>
-        artifact.opportunityId === opportunity.id && artifact.type === type,
-    );
+  const versions = (await store.all<ArtifactVersion>("artifacts")).filter(
+    (artifact) =>
+      artifact.opportunityId === opportunity.id && artifact.type === type,
+  );
   const artifact: ArtifactVersion = {
     runId: run.id,
     id: id("artifact"),
@@ -507,6 +554,6 @@ export function createArtifact(
     requiresConfirmation: true,
   };
   // Edits are immutable new versions, never updates to the original record.
-  store.put("artifacts", artifact);
+  await store.put("artifacts", artifact);
   return artifact;
 }

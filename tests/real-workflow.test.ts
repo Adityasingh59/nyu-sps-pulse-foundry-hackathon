@@ -15,7 +15,7 @@ import type {
 
 test("real source review, auditable extraction correction and rejected-source exclusion preserve provenance and raw history", async () => {
   const folder = await mkdtemp(join(tmpdir(), "tablesignal-real-test-"));
-  const app = createApplication({
+  const app = await createApplication({
     dbPath: join(folder, "test.sqlite"),
     worker: false,
     seed: false,
@@ -51,8 +51,8 @@ test("real source review, auditable extraction correction and rejected-source ex
     contentHash: "original-hash",
     fetchedAt: "2026-10-20T00:00:00Z",
   };
-  app.store.put("restaurants", restaurant);
-  app.store.put("sources", source);
+  await app.store.put("restaurants", restaurant);
+  await app.store.put("sources", source);
   const bank: QueryBank = {
     id: "bank",
     restaurantId: "real",
@@ -68,7 +68,7 @@ test("real source review, auditable extraction correction and rejected-source ex
       },
     ],
   };
-  app.store.put("banks", bank);
+  await app.store.put("banks", bank);
   const raw =
     "1. **John's of Bleecker Street** — A pizza option serving whole pies rather than slices.";
   const run: Run = {
@@ -98,7 +98,7 @@ test("real source review, auditable extraction correction and rejected-source ex
     metrics: null,
     competitors: [],
   };
-  app.store.put("runs", run);
+  await app.store.put("runs", run);
   const server = app.app.listen(0, "127.0.0.1");
   await new Promise<void>((resolve) =>
     server.once("listening", () => resolve()),
@@ -149,7 +149,7 @@ test("real source review, auditable extraction correction and rejected-source ex
     assert.equal(excluded.contentHash, "original-hash");
     assert.equal(excluded.excerpt, source.excerpt);
     assert.equal(excluded.review?.status, "rejected");
-    app.store.put("opportunities", {
+    await app.store.put("opportunities", {
       id: "opportunity",
       runId: "run",
       title: "Test draft",
@@ -183,7 +183,7 @@ test("real source review, auditable extraction correction and rejected-source ex
         },
       ],
     };
-    app.store.put("restaurants", invalid);
+    await app.store.put("restaurants", invalid);
     assert.equal(
       (
         await post(

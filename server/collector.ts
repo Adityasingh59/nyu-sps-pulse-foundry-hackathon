@@ -184,8 +184,7 @@ export function robotsAllows(
     rules: { path: string; allow: boolean }[];
   }[] = [];
   let group:
-    | { agents: string[]; rules: { path: string; allow: boolean }[] }
-    | undefined;
+    { agents: string[]; rules: { path: string; allow: boolean }[] } | undefined;
   let directives = false;
   for (const raw of contents.split(/\r?\n/)) {
     const line = raw.replace(/#.*$/, "").trim();
@@ -402,6 +401,7 @@ function sameSite(url: string, home: string): boolean {
 export function selectUsefulLinks(
   links: EvidenceLink[],
   home: string,
+  generic = false,
 ): EvidenceLink[] {
   const ranked = links
     .flatMap((link) => {
@@ -423,9 +423,14 @@ export function selectUsefulLinks(
         )
           return [];
         const kind = pageKind(url.href, link.text);
+        const businessPage =
+          generic &&
+          /\b(services?|products?|solutions?|pricing|plans?|features?|faq|help|contact|about)\b/i.test(
+            `${url.pathname.replace(/[-_/]/g, " ")} ${link.text}`,
+          );
         if (
           kind === "home" ||
-          kind === "other" ||
+          (kind === "other" && !businessPage) ||
           /privacy|terms|accessibility|gift|order|delivery|reserve|reservation|catering/i.test(
             `${url.pathname} ${link.text}`,
           )
@@ -453,7 +458,7 @@ export function selectUsefulLinks(
 }
 export async function collectSources(
   restaurant: Restaurant,
-  save: (source: SourceSnapshot) => void,
+  save: (source: SourceSnapshot) => unknown,
   options: { linkFilter?: (link: EvidenceLink) => boolean } = {},
 ): Promise<void> {
   const queue: EvidenceLink[] = [{ url: restaurant.website, text: "Homepage" }];
@@ -474,14 +479,18 @@ export async function collectSources(
           "Linked page redirected to another site; manual review required.",
         );
       visited.add(page.url);
-      save(snapshotFromPage(restaurant, page, next.text));
+      await save(snapshotFromPage(restaurant, page, next.text));
       const evidence = inspectPageEvidence(
         page.body,
         page.url,
         "discovery",
         restaurant,
       );
-      const useful = selectUsefulLinks(evidence.links, home)
+      const useful = selectUsefulLinks(
+        evidence.links,
+        home,
+        restaurant.businessType === "business",
+      )
         .filter((link) => !options.linkFilter || options.linkFilter(link))
         .filter(
           (link) =>
@@ -490,7 +499,7 @@ export async function collectSources(
         );
       queue.push(...useful);
     } catch (error) {
-      save(failedSnapshot(restaurant, next.url, error));
+      await save(failedSnapshot(restaurant, next.url, error));
     }
   }
 }

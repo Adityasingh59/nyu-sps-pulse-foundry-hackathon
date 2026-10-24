@@ -1,6 +1,10 @@
 # TableSignal
 
-TableSignal measures how a restaurant appears in a saved set of AI dining recommendations, connects findings to public source snapshots, creates reviewable content, and repeats the same measurement.
+TableSignal measures how a business appears in a saved set of AI recommendations, connects findings to public source snapshots, creates reviewable content, and repeats the same measurement.
+
+**Add any business by name and public website** in Business settings → Add business. Bare domains such as `example.com` are accepted. General business mode uses customer discovery questions and Organization drafts; restaurant mode retains dining questions and Restaurant drafts. Category and location are optional, and make the editable questions more useful. Blocked sites, unsupported PDFs and pages that require JavaScript remain explicit collection limitations.
+
+For online hosting, see the [free Render + Neon deployment guide](docs/deployment.md). Local use keeps SQLite; hosted use requires a private PostgreSQL connection and workspace password. Preparing the deployment files does not create a live deployment.
 
 The selected example is **Gandhi Cafe, 283 Bleecker Street, New York City**, an Indian restaurant near NYU's Washington Square campus, using its [official website](https://gandhicafeny.com/). It was recommended in **2 of 20 valid answers (10%, 100% coverage)**, outside the five most frequently recommended restaurants in this sample. This is a scoped observation, not a citywide quality ranking. See the [case study](reports/gandhi-cafe-case-study.md) and [checkpoint](docs/PROGRESS.md). Select Gandhi Cafe in the restaurant chooser; the browser remembers the selection across refreshes.
 

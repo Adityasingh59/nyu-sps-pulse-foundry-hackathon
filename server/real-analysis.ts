@@ -47,7 +47,10 @@ export function buildRealOpportunities(
   sources: SourceSnapshot[],
   queries: Query[],
 ): Opportunity[] {
-  if (run.mode !== "live" || ["queued", "running"].includes(run.status))
+  if (
+    (run.mode !== "live" && restaurant.businessType !== "business") ||
+    ["queued", "running"].includes(run.status)
+  )
     return [];
   const target = sources.filter(
     (s) =>
@@ -59,6 +62,70 @@ export function buildRealOpportunities(
       !manual(s),
   );
   if (!target.length) return [];
+  if (restaurant.businessType === "business") {
+    const pages = target.slice(0, 4);
+    const limitation = `${run.mode === "synthetic" ? "The recommendation answers are synthetic examples, not live measurements. " : ""}Findings apply only to the cited saved snapshots. Inaccessible and uninspected pages remain unknown. A content edit has no predicted or demonstrated causal effect on public AI recommendations. Review is required before publication.`;
+    const findings: Opportunity[] = [
+      {
+        id: id("opportunity"),
+        runId: run.id,
+        priority: 1,
+        title: "Prepare a source-linked business introduction",
+        gap: `The ${pages.length} cited snapshots provide a reviewable information baseline. Check the extracted identity and contact facts before using them in customer-facing copy. This is a review action, not an automated claim that the website lacks information.`,
+        sourceIds: pages.map((s) => s.id),
+        intents: ["information", "trust"],
+        action:
+          "Review the observed facts, then draft a concise introduction using accepted facts. Leave unknown products, prices, credentials and policies out of the copy.",
+        effort: "low",
+        rationale:
+          "Every included fact can be checked against a timestamped public snapshot.",
+        uncertainty: limitation,
+        artifactTypes: ["about", "faq"],
+      },
+    ];
+    if (
+      !target.some((s) =>
+        /\b(?:frequently asked questions|FAQ)\b/i.test(s.excerpt),
+      )
+    )
+      findings.push({
+        id: id("opportunity"),
+        runId: run.id,
+        priority: findings.length + 1,
+        title: "Draft answers to common customer questions",
+        gap: `No FAQ heading was observed in the ${pages.length} cited saved text snapshots. This does not establish whether a FAQ exists on other pages or in rendered content.`,
+        sourceIds: pages.map((s) => s.id),
+        intents: ["questions", "information"],
+        action:
+          "Use accepted facts to answer customer questions. Link to the website and direct unknown details to the business.",
+        effort: "low",
+        rationale:
+          "A source-linked FAQ is reviewable without inventing products, services or policies.",
+        uncertainty: limitation,
+        artifactTypes: ["faq", "about"],
+      });
+    const noSchema = target.find((s) =>
+      /No JSON-LD script found/i.test(s.excerpt),
+    );
+    if (noSchema)
+      findings.push({
+        id: id("opportunity"),
+        runId: run.id,
+        priority: findings.length + 1,
+        title: "Describe the reviewed business identity with structured data",
+        gap: `No JSON-LD script was found in the saved HTML for ${noSchema.url}. Other pages and markup formats were not established by this observation.`,
+        sourceIds: [noSchema.id],
+        intents: ["information", "trust"],
+        action:
+          "Prepare Organization JSON-LD from the reviewed name, website and accepted facts; compare it with the visible page before use.",
+        effort: "medium",
+        rationale:
+          "Structured identity can be syntax-checked; visibility impact remains unproven.",
+        uncertainty: limitation,
+        artifactTypes: ["jsonld"],
+      });
+    return findings;
+  }
   const leading = new Set(
     run.competitors
       .filter((c) => !c.isTarget)

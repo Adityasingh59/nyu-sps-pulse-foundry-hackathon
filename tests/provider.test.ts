@@ -5,6 +5,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { codexCommand } from "../server/codex-command.ts";
+import { providerInfo } from "../server/providers.ts";
 import {
   codexBinary,
   parseCodexEvents,
@@ -12,6 +13,23 @@ import {
 } from "../server/codex-provider.ts";
 const stream = (...events: unknown[]) =>
   events.map((e) => JSON.stringify(e)).join("\n");
+test(
+  "cloud configuration refuses to fall back to a local CLI sign-in",
+  { skip: Boolean(process.env.OPENAI_API_KEY) },
+  () => {
+    const prior = process.env.TABLESIGNAL_DISABLE_CODEX;
+    try {
+      process.env.TABLESIGNAL_DISABLE_CODEX = "true";
+      const provider = providerInfo();
+      assert.equal(provider.configured, false);
+      assert.equal(provider.adapter, "openai");
+      assert.match(provider.status, /website collection is available/);
+    } finally {
+      if (prior === undefined) delete process.env.TABLESIGNAL_DISABLE_CODEX;
+      else process.env.TABLESIGNAL_DISABLE_CODEX = prior;
+    }
+  },
+);
 test("local CLI command uses Node and the installed JavaScript entry point", () => {
   const args = ["login", "status"];
   const command = codexCommand(args, { executableOverride: "" });
@@ -31,7 +49,11 @@ test("CLI launcher preserves spaced paths and arguments without a shell", async 
       launcherPath,
       "process.stdout.write(JSON.stringify(process.argv.slice(2)));\n",
     );
-    const args = ["--output-schema", join(directory, "answer schema.json"), "a;b"];
+    const args = [
+      "--output-schema",
+      join(directory, "answer schema.json"),
+      "a;b",
+    ];
     const command = codexCommand(args, {
       executableOverride: "",
       launcherPath,

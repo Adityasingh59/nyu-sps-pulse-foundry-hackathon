@@ -135,6 +135,36 @@ const restaurantTypes = new Set([
   "FastFoodRestaurant",
   "IceCreamShop",
 ]);
+const businessTypes = new Set([
+  ...restaurantTypes,
+  "Organization",
+  "Corporation",
+  "LocalBusiness",
+  "Store",
+  "OnlineStore",
+  "ProfessionalService",
+  "SoftwareApplication",
+  "EducationalOrganization",
+  "MedicalBusiness",
+  "HomeAndConstructionBusiness",
+  "LegalService",
+  "FinancialService",
+  "RealEstateAgent",
+  "TravelAgency",
+  "LodgingBusiness",
+  "Hotel",
+  "AutoRepair",
+  "HealthAndBeautyBusiness",
+  "Dentist",
+  "HairSalon",
+  "SportsActivityLocation",
+  "NGO",
+  "Library",
+  "BookStore",
+  "ClothingStore",
+  "HardwareStore",
+  "ShoppingCenter",
+]);
 const typeName = (value: string) =>
   value.replace(/^https?:\/\/schema\.org\//, "");
 function flattenJson(
@@ -250,7 +280,7 @@ function targetMatches(
     !candidate &&
     Boolean(
       schemaUrl &&
-        new URL(schemaUrl).origin === new URL(restaurant.website).origin,
+      new URL(schemaUrl).origin === new URL(restaurant.website).origin,
     )
   );
 }
@@ -289,12 +319,17 @@ export function inspectPageEvidence(
   }
   const types = [...new Set(objects.flatMap(schemaTypes))];
   const candidates = objects.filter((item) =>
-    schemaTypes(item).some((type) => restaurantTypes.has(type)),
+    schemaTypes(item).some((type) =>
+      (restaurant?.businessType === "business"
+        ? businessTypes
+        : restaurantTypes
+      ).has(type),
+    ),
   );
   const matches = candidates.filter((item) => targetMatches(item, restaurant));
   if (candidates.length && !matches.length)
     issues.push(
-      "Restaurant schema identity did not match the requested name or aliases; no facts were extracted from it.",
+      "Business schema identity did not match the requested name or aliases; no facts were extracted from it.",
     );
   if (matches.length > 1)
     issues.push(
@@ -320,7 +355,8 @@ export function inspectPageEvidence(
     const evidence = JSON.stringify(entity);
     add("name", text(entity.name), evidence);
     add("address", formatAddress(entity.address), evidence);
-    add("cuisine", text(entity.servesCuisine), evidence);
+    if (restaurant?.businessType !== "business")
+      add("cuisine", text(entity.servesCuisine), evidence);
     add("phone", text(entity.telephone), evidence);
     add(
       "hours",
@@ -329,6 +365,7 @@ export function inspectPageEvidence(
     );
     add("description", text(entity.description), evidence);
     add("priceRange", text(entity.priceRange), evidence);
+    if (restaurant?.businessType === "business") continue;
     const menu = absoluteWebUrl(entity.hasMenu ?? entity.menu, url);
     add("menuUrl", menu, evidence);
     // Extract items only from the matched restaurant's own menu tree, rather
@@ -380,7 +417,7 @@ export function inspectPageEvidence(
       ) &&
       new URL(link.url).pathname !== new URL(url).pathname,
   );
-  if (menuLink)
+  if (menuLink && restaurant?.businessType !== "business")
     add(
       "menuUrl",
       menuLink.url,
@@ -396,7 +433,10 @@ export function inspectPageEvidence(
     addressText.length < 350
   )
     add("address", addressText, `Address element: ${addressText}`);
-  if (/menu|food|dinner|lunch/i.test(new URL(url).pathname)) {
+  if (
+    restaurant?.businessType !== "business" &&
+    /menu|food|dinner|lunch/i.test(new URL(url).pathname)
+  ) {
     const lines = readable.split("\n");
     const pairs: { name: string; price: string; span: string }[] = [];
     for (let index = 1; index < lines.length; index++) {

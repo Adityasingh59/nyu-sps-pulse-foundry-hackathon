@@ -17,7 +17,7 @@ import type {
 } from "../shared/types.ts";
 
 async function openApplication(dbPath: string, worker = true) {
-  const runtime = createApplication({ dbPath, worker });
+  const runtime = await createApplication({ dbPath, worker });
   let server: Server;
   await new Promise<void>((resolve, reject) => {
     server = runtime.app.listen(0, "127.0.0.1", () => resolve());
@@ -402,9 +402,9 @@ test("synthetic answers do not turn independent source evidence into fictional c
       },
     ],
   };
-  application.store.put("restaurants", restaurant);
-  application.store.put("sources", source);
-  application.store.put("banks", bank);
+  await application.store.put("restaurants", restaurant);
+  await application.store.put("sources", source);
+  await application.store.put("banks", bank);
   const run = await application.json<Run>(
     "/runs",
     body({

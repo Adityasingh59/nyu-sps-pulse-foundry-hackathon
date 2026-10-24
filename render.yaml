@@ -1,0 +1,31 @@
+# Free web service + a separately provisioned Neon Free PostgreSQL database.
+# No disk, paid database, upgrade, or credit purchase is created by this file.
+services:
+  - type: web
+    name: tablesignal
+    runtime: node
+    plan: free
+    numInstances: 1
+    buildCommand: npm ci --include=dev && npm run build && npm run db:migrate
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: NODE_VERSION
+        value: 24.15.0
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        sync: false
+      - key: TABLESIGNAL_ACCESS_PASSWORD
+        generateValue: true
+      - key: TABLESIGNAL_REQUIRE_POSTGRES
+        value: "true"
+      - key: TABLESIGNAL_DISABLE_CODEX
+        value: "true"
+      - key: MAX_REQUESTS_PER_RUN
+        value: "20"
+      - key: MAX_OUTPUT_TOKENS
+        value: "900"

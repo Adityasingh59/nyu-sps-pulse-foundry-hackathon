@@ -19,7 +19,7 @@ export type Table =
   | "settings"
   | "calls"
   | "comparisons";
-const tables: Table[] = [
+export const tables: Table[] = [
   "restaurants",
   "banks",
   "runs",

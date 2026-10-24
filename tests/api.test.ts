@@ -112,22 +112,22 @@ test("persisted interrupted observations resume without discarding their attempt
   ]);
   const directory = await mkdtemp(join(tmpdir(), "tablesignal-recovery-"));
   const path = join(directory, "recovery.sqlite");
-  let runtime = createApplication({ dbPath: path, worker: false });
+  let runtime = await createApplication({ dbPath: path, worker: false });
   try {
-    const original = runtime.store.get<import("../shared/types.ts").Run>(
+    const original = (await runtime.store.get<import("../shared/types.ts").Run>(
       "runs",
       "run_linden_baseline",
-    )!;
-    const originalBank = runtime.store.get<
+    ))!;
+    const originalBank = (await runtime.store.get<
       import("../shared/types.ts").QueryBank
-    >("banks", original.bankId)!;
+    >("banks", original.bankId))!;
     const bank = {
       ...originalBank,
       id: "bank_recovery",
       queries: originalBank.queries.slice(0, 1),
     };
     bank.contentHash = hash(bank.queries);
-    runtime.store.put("banks", bank);
+    await runtime.store.put("banks", bank);
     const result = {
       ...original.results[0],
       id: "result_interrupted",
@@ -144,24 +144,24 @@ test("persisted interrupted observations resume without discarding their attempt
       completedAt: undefined,
       results: [result],
     };
-    runtime.store.put("runs", interrupted);
-    const settings = runtime.store.get<
+    await runtime.store.put("runs", interrupted);
+    const settings = (await runtime.store.get<
       import("../server/providers.ts").ProviderSettings
-    >("settings", original.id)!;
-    runtime.store.put("settings", { ...settings, id: interrupted.id });
+    >("settings", original.id))!;
+    await runtime.store.put("settings", { ...settings, id: interrupted.id });
     await runtime.close();
-    runtime = createApplication({ dbPath: path });
+    runtime = await createApplication({ dbPath: path });
     const deadline = Date.now() + 3000;
-    let resumed = runtime.store.get<import("../shared/types.ts").Run>(
+    let resumed = (await runtime.store.get<import("../shared/types.ts").Run>(
       "runs",
       interrupted.id,
-    )!;
+    ))!;
     while (
       ["queued", "running"].includes(resumed.status) &&
       Date.now() < deadline
     ) {
       await new Promise((resolve) => setTimeout(resolve, 30));
-      resumed = runtime.store.get("runs", interrupted.id)!;
+      resumed = (await runtime.store.get("runs", interrupted.id))!;
     }
     assert.equal(resumed.status, "completed");
     assert.equal(resumed.results[0].status, "succeeded");

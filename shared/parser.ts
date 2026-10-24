@@ -1,12 +1,12 @@
 import type { Appearance, Restaurant } from "./types";
 
-export const PARSER_VERSION = "conservative-list-v4";
+export const PARSER_VERSION = "conservative-list-v5";
 const normalize = (value: string) =>
   value
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 const escapeRegex = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -78,8 +78,8 @@ function identityAmbiguous(
       );
     if (
       !isDescriptor &&
-      !normalizedLocation.includes(normalizedPlace) &&
-      !normalizedPlace.includes(normalizedLocation)
+      (!normalizedLocation || !normalizedLocation.includes(normalizedPlace)) &&
+      (!normalizedLocation || !normalizedPlace.includes(normalizedLocation))
     )
       return true;
   }
@@ -181,12 +181,12 @@ export function parseAnswer(
       aliases.find((alias) => aliasPattern(alias).test(heading));
     const listRecommended = Boolean(
       list &&
-        heading &&
-        !negativeSection &&
-        !listEntryNegative(body) &&
-        !/\b(?:mentioned (?:only )?in passing|for comparison only|not a recommendation)\b/i.test(
-          body,
-        ),
+      heading &&
+      !negativeSection &&
+      !listEntryNegative(body) &&
+      !/\b(?:mentioned (?:only )?in passing|for comparison only|not a recommendation)\b/i.test(
+        body,
+      ),
     );
     if (heading) {
       const isTarget = Boolean(headingAlias || longerHeadingAlias);

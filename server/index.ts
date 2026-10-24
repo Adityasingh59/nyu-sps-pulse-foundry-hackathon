@@ -44,7 +44,9 @@ import {
 } from "./providers.ts";
 import type { ProviderSettings } from "./providers.ts";
 import { collectCompetitorEvidence } from "./competitive-evidence.ts";
-import { hash, id, now, Store } from "./store.ts";
+import { hash, id, now } from "./store.ts";
+import { RecordStore as Store } from "./record-store.ts";
+import { installAccess, type AccessOptions } from "./access.ts";
 
 const DEMO_ID = "restaurant_linden";
 class ApiError extends Error {
@@ -63,12 +65,12 @@ function textInput(value: unknown, field: string, max = 400): string {
     );
   return value.trim();
 }
-function requireEntity<T>(
+async function requireEntity<T>(
   store: Store,
   table: Parameters<Store["get"]>[0],
   key: string,
-): T {
-  const value = store.get<T>(table, key);
+): Promise<T> {
+  const value = await store.get<T>(table, key);
   if (!value) throw new ApiError(404, "The requested record was not found.");
   return value;
 }
@@ -105,8 +107,8 @@ function factsInput(value: unknown, confirmed: boolean): ProfileFact[] {
     };
   });
 }
-function metrics(store: Store, run: Run): Run {
-  const bank = store.get<QueryBank>("banks", run.bankId);
+async function metrics(store: Store, run: Run): Promise<Run> {
+  const bank = await store.get<QueryBank>("banks", run.bankId);
   run.metrics = calculateMetrics(run.results, run.restaurantId, bank?.queries);
   run.competitors = rankCompetitors(
     run.results,
@@ -115,12 +117,22 @@ function metrics(store: Store, run: Run): Run {
   );
   return run;
 }
-function settingsFor(mode: EvidenceMode, runId: string): ProviderSettings {
+function settingsFor(
+  mode: EvidenceMode,
+  runId: string,
+  restaurant?: Restaurant,
+): ProviderSettings {
   return {
     id: runId,
     adapter: mode === "live" ? providerInfo().adapter : undefined,
     model: mode === "live" ? LIVE_MODEL : "synthetic-fixture-v1",
-    promptVersion: PROMPT_VERSION,
+    promptVersion:
+      restaurant?.businessType === "business"
+        ? "neutral-business-v1"
+        : PROMPT_VERSION,
+    ...(restaurant?.businessType === "business"
+      ? { recommendationKind: "business" as const }
+      : {}),
     retrieval: mode === "live" ? LIVE_RETRIEVAL : SYNTHETIC_RETRIEVAL,
     maxRequests: boundedEnv("MAX_REQUESTS_PER_RUN", 40, 1, 60),
     maxOutputTokens: boundedEnv("MAX_OUTPUT_TOKENS", 900, 200, 2000),
@@ -137,13 +149,13 @@ function settingsFingerprint(settings: ProviderSettings) {
   const { id: _id, retryCeilings: _retry, ...fixed } = settings;
   return hash(fixed);
 }
-function newRun(
+async function newRun(
   store: Store,
   bank: QueryBank,
   mode: EvidenceMode,
   sourceRun?: Run,
-): Run {
-  const restaurant = requireEntity<Restaurant>(
+): Promise<Run> {
+  const restaurant = await requireEntity<Restaurant>(
     store,
     "restaurants",
     bank.restaurantId,
@@ -164,12 +176,10 @@ function newRun(
       "The fictional demonstration restaurant supports synthetic examples only.",
     );
   if (
-    store
-      .all<Run>("runs")
-      .filter(
-        (run) =>
-          run.mode === "live" && ["queued", "running"].includes(run.status),
-      ).length >= 1 &&
+    (await store.all<Run>("runs")).filter(
+      (run) =>
+        run.mode === "live" && ["queued", "running"].includes(run.status),
+    ).length >= 1 &&
     mode === "live"
   )
     throw new ApiError(
@@ -178,11 +188,11 @@ function newRun(
     );
   const runId = id("run");
   const previous = sourceRun
-    ? requireEntity<ProviderSettings>(store, "settings", sourceRun.id)
+    ? await requireEntity<ProviderSettings>(store, "settings", sourceRun.id)
     : undefined;
   const settings = previous
     ? { ...previous, id: runId, retryCeilings: {} }
-    : settingsFor(mode, runId);
+    : settingsFor(mode, runId, restaurant);
   const run: Run = {
     id: runId,
     bankId: bank.id,
@@ -196,8 +206,7 @@ function newRun(
     status: "queued",
     parserVersion: PARSER_VERSION,
     analysisRevision: 1,
-    sourceSnapshotIds: store
-      .all<SourceSnapshot>("sources")
+    sourceSnapshotIds: (await store.all<SourceSnapshot>("sources"))
       .filter(
         (s) =>
           s.restaurantId === restaurant.id &&
@@ -223,11 +232,11 @@ function newRun(
     competitors: [],
     ...(sourceRun ? { sourceRunId: sourceRun.id } : {}),
   };
-  store.put("settings", settings);
-  return store.put("runs", metrics(store, run));
+  await store.put("settings", settings);
+  return await store.put("runs", await metrics(store, run));
 }
-function seed(store: Store) {
-  if (store.get("restaurants", DEMO_ID)) return;
+async function seed(store: Store) {
+  if (await store.get("restaurants", DEMO_ID)) return;
   const createdAt = now();
   const homeId = "source_linden_home",
     menuId = "source_linden_menu";
@@ -265,7 +274,7 @@ function seed(store: Store) {
       },
     ],
   };
-  store.put("restaurants", restaurant);
+  await store.put("restaurants", restaurant);
   for (const source of [
     {
       id: homeId,
@@ -289,7 +298,7 @@ function seed(store: Store) {
         "Synthetic competitor source fixture. Village Hearth presents example dishes and prices in a single menu page. It also includes a short FAQ for menu updates and current availability. No real restaurant website was inspected.",
     },
   ])
-    store.put<SourceSnapshot>("sources", {
+    await store.put<SourceSnapshot>("sources", {
       ...source,
       restaurantId: DEMO_ID,
       status: "succeeded",
@@ -306,125 +315,150 @@ function seed(store: Store) {
     queries,
     contentHash: hash(queries),
   };
-  store.put("banks", bank);
-  const run = newRun(store, bank, "synthetic");
+  await store.put("banks", bank);
+  const run = await newRun(store, bank, "synthetic");
   run.id = "run_linden_baseline";
   const settings = settingsFor("synthetic", run.id);
-  store.put("settings", settings);
+  await store.put("settings", settings);
   // Remove the temporary queued run created to use exactly the same initialization path.
-  const temporary = store
-    .all<Run>("runs")
-    .find((value) => value.id !== run.id && value.bankId === bank.id);
+  const temporary = (await store.all<Run>("runs")).find(
+    (value) => value.id !== run.id && value.bankId === bank.id,
+  );
   if (temporary) {
-    store.db.prepare("DELETE FROM runs WHERE id=?").run(temporary.id);
-    store.db.prepare("DELETE FROM settings WHERE id=?").run(temporary.id);
+    await store.delete("runs", temporary.id);
+    await store.delete("settings", temporary.id);
   }
-  run.results = queries.map((query, index) => {
-    const answer = syntheticAnswer(restaurant, query, index);
-    const result: QueryResult = {
-      id: `result_linden_${index + 1}`,
-      queryId: query.id,
-      sampleId: 1,
-      status: "succeeded",
-      rawAnswer: answer.rawAnswer,
-      appearances: parseAnswer(answer.rawAnswer, restaurant),
-      citations: answer.citations,
-      latencyMs: 0,
-      executedAt: createdAt,
-      attempts: 1,
-    };
-    store.put("calls", {
-      id: `call_linden_${index + 1}`,
-      runId: run.id,
-      resultId: result.id,
-      attempt: 1,
-      executedAt: createdAt,
-      rawResponse: answer.rawResponse,
-    });
-    return result;
-  });
+  run.results = await Promise.all(
+    queries.map(async (query, index) => {
+      const answer = syntheticAnswer(restaurant, query, index);
+      const result: QueryResult = {
+        id: `result_linden_${index + 1}`,
+        queryId: query.id,
+        sampleId: 1,
+        status: "succeeded",
+        rawAnswer: answer.rawAnswer,
+        appearances: parseAnswer(answer.rawAnswer, restaurant),
+        citations: answer.citations,
+        latencyMs: 0,
+        executedAt: createdAt,
+        attempts: 1,
+      };
+      await store.put("calls", {
+        id: `call_linden_${index + 1}`,
+        runId: run.id,
+        resultId: result.id,
+        attempt: 1,
+        executedAt: createdAt,
+        rawResponse: answer.rawResponse,
+      });
+      return result;
+    }),
+  );
   run.status = "completed";
   run.completedAt = createdAt;
-  store.put("runs", metrics(store, run));
-  ensureOpportunities(store, run);
+  await store.put("runs", await metrics(store, run));
+  await ensureOpportunities(store, run);
 }
 
-export function createApplication(
-  options: { dbPath?: string; worker?: boolean; seed?: boolean } = {},
+export async function createApplication(
+  options: {
+    dbPath?: string;
+    worker?: boolean;
+    seed?: boolean;
+    access?: AccessOptions;
+    databaseUrl?: string;
+    recordStore?: Store;
+    sourceCollector?: typeof collectSources;
+  } = {},
 ) {
-  const store = new Store(
-    options.dbPath ??
-      process.env.TABLESIGNAL_DB_PATH ??
-      resolve("data/tablesignal.sqlite"),
-  );
-  if (options.seed !== false) store.transaction(() => seed(store));
   const app = express();
   app.disable("x-powered-by");
+  installAccess(
+    app,
+    options.access ?? {
+      publicOrigin:
+        process.env.TABLESIGNAL_PUBLIC_ORIGIN ||
+        process.env.RENDER_EXTERNAL_URL,
+      password: process.env.TABLESIGNAL_ACCESS_PASSWORD,
+    },
+  );
+  if (
+    !options.dbPath &&
+    !options.recordStore &&
+    process.env.TABLESIGNAL_REQUIRE_POSTGRES === "true" &&
+    !options.databaseUrl &&
+    !process.env.DATABASE_URL
+  )
+    throw new Error(
+      "This deployment requires DATABASE_URL. Refusing to use ephemeral SQLite storage.",
+    );
+  const store =
+    options.recordStore ??
+    new Store({
+      dbPath:
+        options.dbPath ??
+        process.env.TABLESIGNAL_DB_PATH ??
+        resolve("data/tablesignal.sqlite"),
+      databaseUrl:
+        options.databaseUrl ??
+        (options.dbPath ? undefined : process.env.DATABASE_URL),
+    });
+  try {
+    await store.ready();
+    if (options.seed !== false)
+      await store.transaction(async () => await seed(store));
+  } catch {
+    await store.close();
+    throw new Error(
+      "Database initialization failed. Check connectivity and run npm run db:migrate for hosted storage.",
+    );
+  }
   app.use(express.json({ limit: "120kb" }));
-  // Local operator app: mutating browser requests must originate from our loopback UI.
-  app.use("/api", (req, res, next) => {
-    const origin = req.header("origin");
-    if (
-      origin &&
-      !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(origin)
-    ) {
-      res.status(403).json({
-        error:
-          "This local application accepts browser requests from localhost only.",
-      });
-      return;
-    }
-    if (origin) {
-      res.setHeader("Access-Control-Allow-Origin", origin);
-      res.setHeader("Vary", "Origin");
-    }
-    if (req.method === "OPTIONS") {
-      res.setHeader(
-        "Access-Control-Allow-Headers",
-        "Content-Type, Idempotency-Key",
-      );
-      res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
-      res.status(204).end();
-      return;
-    }
-    res.setHeader("Cache-Control", "no-store");
-    next();
-  });
   let closed = false;
   const background = new Set<Promise<unknown>>();
   const active = new Set<string>();
+  const pendingRunIds = new Set<string>();
+  let recoveryPending = true;
   const track = (promise: Promise<unknown>) => {
     background.add(promise);
     void promise.finally(() => background.delete(promise)).catch(() => {});
   };
-  const saveRun = (run: Run) => store.put("runs", metrics(store, run));
+  const saveRun = async (run: Run) =>
+    await store.put("runs", await metrics(store, run));
   const collectingRestaurants = new Set<string>();
-  function scheduleCollection(restaurant: Restaurant) {
+  async function scheduleCollection(restaurant: Restaurant) {
     if (collectingRestaurants.has(restaurant.id)) return;
-    collectingRestaurants.add(restaurant.id);
-    const latest = requireEntity<Restaurant>(
+    const latest = await requireEntity<Restaurant>(
       store,
       "restaurants",
       restaurant.id,
     );
     latest.collectionStatus = "collecting";
     delete latest.collectionError;
-    store.put("restaurants", latest);
+    await store.put("restaurants", latest);
+    if (!store.hasWorkerLock) {
+      recoveryPending = true;
+      return;
+    }
+    collectingRestaurants.add(restaurant.id);
     const snapshots: SourceSnapshot[] = [];
-    const task = collectSources(latest, (snapshot) => {
-      if (closed) return;
-      const saved = {
-        ...snapshot,
-        sourceKind: "website" as const,
-        scope: "target" as const,
-        entityId: restaurant.id,
-      };
-      snapshots.push(saved);
-      store.put("sources", saved);
-    })
-      .then(() => {
+    const task = (options.sourceCollector ?? collectSources)(
+      latest,
+      async (snapshot) => {
         if (closed) return;
-        const current = requireEntity<Restaurant>(
+        const saved = {
+          ...snapshot,
+          sourceKind: "website" as const,
+          scope: "target" as const,
+          entityId: restaurant.id,
+        };
+        snapshots.push(saved);
+        await store.put("sources", saved);
+      },
+    )
+      .then(async () => {
+        if (closed) return;
+        const current = await requireEntity<Restaurant>(
           store,
           "restaurants",
           restaurant.id,
@@ -448,11 +482,11 @@ export function createApplication(
           current.collectionStatus === "failed"
             ? "No allowed website pages could be retrieved. Inspect the failed source snapshots."
             : undefined;
-        store.put("restaurants", current);
+        await store.put("restaurants", current);
       })
-      .catch(() => {
+      .catch(async () => {
         if (closed) return;
-        const current = requireEntity<Restaurant>(
+        const current = await requireEntity<Restaurant>(
           store,
           "restaurants",
           restaurant.id,
@@ -460,18 +494,14 @@ export function createApplication(
         current.collectionStatus = "failed";
         current.collectionError =
           "Website collection could not complete. Existing evidence has been preserved.";
-        store.put("restaurants", current);
+        await store.put("restaurants", current);
       })
       .finally(() => collectingRestaurants.delete(restaurant.id));
     track(task);
   }
-  for (const restaurant of store
-    .all<Restaurant>("restaurants")
-    .filter((r) => r.collectionStatus === "collecting"))
-    scheduleCollection(restaurant);
 
   const collectingRuns = new Set<string>();
-  function scheduleCompetitorCollection(run: Run) {
+  async function scheduleCompetitorCollection(run: Run) {
     if (collectingRuns.has(run.id)) return;
     if (["queued", "running"].includes(run.status))
       throw new ApiError(
@@ -483,30 +513,34 @@ export function createApplication(
         400,
         "Synthetic fixtures have no public competitor sites to inspect.",
       );
-    collectingRuns.add(run.id);
     run.evidenceStatus = "collecting";
-    store.put("runs", run);
-    const target = requireEntity<Restaurant>(
+    await store.put("runs", run);
+    if (!store.hasWorkerLock) {
+      recoveryPending = true;
+      return;
+    }
+    collectingRuns.add(run.id);
+    const target = await requireEntity<Restaurant>(
       store,
       "restaurants",
       run.restaurantId,
     );
     const sourceIds: string[] = [];
-    const task = collectCompetitorEvidence(run, target, (source) => {
+    const task = collectCompetitorEvidence(run, target, async (source) => {
       if (!closed) {
         sourceIds.push(source.id);
-        store.put("sources", source);
+        await store.put("sources", source);
       }
     })
-      .then((warnings) => {
+      .then(async (warnings) => {
         if (closed) return;
-        const latest = requireEntity<Run>(store, "runs", run.id);
+        const latest = await requireEntity<Run>(store, "runs", run.id);
         latest.evidenceStatus = "completed";
         latest.evidenceCompletedAt = now();
         latest.evidenceWarnings = warnings;
         latest.analysisRevision = (latest.analysisRevision ?? 1) + 1;
-        store.put("runs", latest);
-        store.put("calls", {
+        await store.put("runs", latest);
+        await store.put("calls", {
           id: id("audit"),
           runId: run.id,
           kind: "evidence-collected",
@@ -515,56 +549,49 @@ export function createApplication(
           warnings,
           analysisRevision: latest.analysisRevision,
         });
-        ensureOpportunities(store, latest);
+        await ensureOpportunities(store, latest);
       })
-      .catch(() => {
+      .catch(async () => {
         if (!closed) {
-          const latest = requireEntity<Run>(store, "runs", run.id);
+          const latest = await requireEntity<Run>(store, "runs", run.id);
           latest.evidenceStatus = "failed";
           latest.evidenceWarnings = [
             "Competitor collection could not complete; existing sources and answers are preserved.",
           ];
-          store.put("runs", latest);
+          await store.put("runs", latest);
         }
       })
       .finally(() => collectingRuns.delete(run.id));
     track(task);
   }
-  for (const run of store
-    .all<Run>("runs")
-    .filter(
-      (r) =>
-        r.evidenceStatus === "collecting" &&
-        !["queued", "running"].includes(r.status),
-    ))
-    scheduleCompetitorCollection(run);
-  const updateResult = (runId: string, result: QueryResult) => {
-    const run = requireEntity<Run>(store, "runs", runId);
-    run.results = run.results.map((value) =>
-      value.id === result.id ? result : value,
-    );
-    saveRun(run);
-  };
-  for (const run of store
-    .all<Run>("runs")
-    .filter((value) => ["queued", "running"].includes(value.status))) {
-    run.status = "queued";
-    run.results = run.results.map((result) =>
-      result.status === "running"
-        ? {
-            ...result,
-            status: "queued",
-            error: "Interrupted attempt recovered after restart.",
-          }
-        : result,
-    );
-    saveRun(run);
+  const updateResult = async (runId: string, result: QueryResult) =>
+    store.transaction(async () => {
+      if (!(await store.claimWorker()))
+        throw new Error(
+          "Worker ownership changed; saved attempts remain recoverable.",
+        );
+      const run = await requireEntity<Run>(store, "runs", runId);
+      run.results = run.results.map((value) =>
+        value.id === result.id ? result : value,
+      );
+      await saveRun(run);
+    });
+  for (const run of (await store.all<Run>("runs")).filter((value) =>
+    ["queued", "running"].includes(value.status),
+  )) {
+    pendingRunIds.add(run.id);
   }
   async function perform(runId: string, resultId: string) {
-    const run = requireEntity<Run>(store, "runs", runId),
-      settings = requireEntity<ProviderSettings>(store, "settings", runId);
-    const bank = requireEntity<QueryBank>(store, "banks", run.bankId),
-      restaurant = requireEntity<Restaurant>(
+    if (!(await store.claimWorker()))
+      throw new Error("Another worker owns this workspace.");
+    const run = await requireEntity<Run>(store, "runs", runId),
+      settings = await requireEntity<ProviderSettings>(
+        store,
+        "settings",
+        runId,
+      );
+    const bank = await requireEntity<QueryBank>(store, "banks", run.bankId),
+      restaurant = await requireEntity<Restaurant>(
         store,
         "restaurants",
         run.restaurantId,
@@ -585,30 +612,31 @@ export function createApplication(
             "Interrupted observation reached its retry ceiling; retry manually or start a new run.",
           executedAt: now(),
         };
-        updateResult(runId, result);
+        await updateResult(runId, result);
         break;
       }
-      const current = requireEntity<Run>(store, "runs", runId);
-      if (
-        current.results.reduce((sum, value) => sum + value.attempts, 0) >=
-        settings.maxRequests
-      ) {
-        result = {
-          ...result,
-          status: "failed",
-          error: `Per-run ceiling of ${settings.maxRequests} provider requests reached. This answer is excluded.`,
-          executedAt: now(),
-        };
-        updateResult(runId, result);
-        break;
-      }
-      result = {
-        ...result,
-        status: "running",
-        attempts: result.attempts + 1,
-        error: undefined,
-      };
-      updateResult(runId, result);
+      result = await store.transaction(async () => {
+        const current = await requireEntity<Run>(store, "runs", runId);
+        const overBudget =
+          current.results.reduce((sum, value) => sum + value.attempts, 0) >=
+          settings.maxRequests;
+        const reserved: QueryResult = overBudget
+          ? {
+              ...result,
+              status: "failed",
+              error: `Per-run ceiling of ${settings.maxRequests} provider requests reached. This answer is excluded.`,
+              executedAt: now(),
+            }
+          : {
+              ...result,
+              status: "running",
+              attempts: result.attempts + 1,
+              error: undefined,
+            };
+        await updateResult(runId, reserved);
+        return reserved;
+      });
+      if (result.status === "failed") break;
       const started = Date.now();
       try {
         const answer =
@@ -638,7 +666,7 @@ export function createApplication(
           executedAt: now(),
           error: undefined,
         };
-        store.put("calls", {
+        await store.put("calls", {
           id: id("call"),
           runId,
           resultId,
@@ -647,7 +675,7 @@ export function createApplication(
           latencyMs: result.latencyMs,
           rawResponse: answer.rawResponse,
         });
-        updateResult(runId, result);
+        await updateResult(runId, result);
         break;
       } catch (error) {
         const message =
@@ -655,7 +683,7 @@ export function createApplication(
         const safeError = /API key|Bearer|sk-[a-zA-Z0-9]/i.test(message)
           ? "Provider authentication failed. Check server configuration."
           : message;
-        store.put("calls", {
+        await store.put("calls", {
           id: id("call"),
           runId,
           resultId,
@@ -671,7 +699,7 @@ export function createApplication(
           latencyMs: Date.now() - started,
           executedAt: now(),
         };
-        updateResult(runId, result);
+        await updateResult(runId, result);
         const retryable = !(
           error instanceof Error &&
           "retryable" in error &&
@@ -684,10 +712,10 @@ export function createApplication(
       }
     }
   }
-  function finishRuns() {
-    for (const run of store
-      .all<Run>("runs")
-      .filter((value) => ["queued", "running"].includes(value.status))) {
+  async function finishRuns() {
+    for (const run of (await store.all<Run>("runs")).filter((value) =>
+      ["queued", "running"].includes(value.status),
+    )) {
       if (
         run.results.some((result) =>
           ["queued", "running"].includes(result.status),
@@ -704,86 +732,179 @@ export function createApplication(
             ? "partial"
             : "failed";
       run.completedAt = now();
-      saveRun(run);
+      await saveRun(run);
+      pendingRunIds.delete(run.id);
       if (run.mode === "live" && successes > 0)
-        scheduleCompetitorCollection(run);
-      else ensureOpportunities(store, run);
+        await scheduleCompetitorCollection(run);
+      else await ensureOpportunities(store, run);
     }
   }
-  function tick() {
-    if (closed) return;
-    finishRuns();
-    for (const run of store
-      .all<Run>("runs")
-      .filter((value) => ["queued", "running"].includes(value.status))) {
-      if (run.status === "queued") {
-        run.status = "running";
-        store.put("runs", run);
+  let ticking = false;
+  async function tick() {
+    if (closed || ticking) return;
+    ticking = true;
+    try {
+      if (!(await store.claimWorker())) return;
+      if (recoveryPending) {
+        recoveryPending = false;
+        for (const restaurant of (
+          await store.all<Restaurant>("restaurants")
+        ).filter((r) => r.collectionStatus === "collecting"))
+          await scheduleCollection(restaurant);
+        for (const run of await store.all<Run>("runs")) {
+          if (
+            run.evidenceStatus === "collecting" &&
+            !["queued", "running"].includes(run.status)
+          )
+            await scheduleCompetitorCollection(run);
+          if (["queued", "running"].includes(run.status)) {
+            pendingRunIds.add(run.id);
+            if (!run.results.some((r) => active.has(r.id))) {
+              run.status = "queued";
+              run.results = run.results.map((result) =>
+                result.status === "running"
+                  ? {
+                      ...result,
+                      status: "queued",
+                      error: "Interrupted attempt recovered after restart.",
+                    }
+                  : result,
+              );
+              await saveRun(run);
+            }
+          }
+        }
       }
-      for (const result of run.results.filter(
-        (value) => value.status === "queued",
+      await finishRuns();
+      for (const run of (await store.all<Run>("runs")).filter((value) =>
+        ["queued", "running"].includes(value.status),
       )) {
-        if (active.size >= 2) return;
-        if (active.has(result.id)) continue;
-        active.add(result.id);
-        const task = perform(run.id, result.id)
-          .catch((error) => {
-            const latest = requireEntity<Run>(
-              store,
-              "runs",
-              run.id,
-            ).results.find((value) => value.id === result.id)!;
-            updateResult(run.id, {
-              ...latest,
-              status: "failed",
-              error: "Internal execution error; this observation is excluded.",
-              executedAt: now(),
+        if (run.status === "queued") {
+          run.status = "running";
+          await store.put("runs", run);
+        }
+        for (const result of run.results.filter(
+          (value) => value.status === "queued",
+        )) {
+          if (active.size >= 2) return;
+          if (active.has(result.id)) continue;
+          active.add(result.id);
+          const task = perform(run.id, result.id)
+            .catch(async (error) => {
+              if (!(await store.claimWorker())) {
+                recoveryPending = true;
+                return;
+              }
+              const latest = (
+                await requireEntity<Run>(store, "runs", run.id)
+              ).results.find((value) => value.id === result.id)!;
+              await updateResult(run.id, {
+                ...latest,
+                status: "failed",
+                error:
+                  "Internal execution error; this observation is excluded.",
+                executedAt: now(),
+              });
+              console.error(
+                "Worker observation failed",
+                error instanceof Error ? error.name : "unknown",
+              );
+            })
+            .finally(() => {
+              active.delete(result.id);
             });
-            console.error(
-              "Worker observation failed",
-              error instanceof Error ? error.name : "unknown",
-            );
-          })
-          .finally(() => {
-            active.delete(result.id);
-            if (!closed) finishRuns();
-          });
-        track(task);
+          track(task);
+        }
+      }
+    } finally {
+      try {
+        if (
+          store.kind === "postgres" &&
+          !pendingRunIds.size &&
+          !active.size &&
+          !collectingRuns.size &&
+          !collectingRestaurants.size
+        )
+          await store.releaseWorker();
+      } finally {
+        ticking = false;
       }
     }
   }
-  const interval = options.worker === false ? undefined : setInterval(tick, 75);
+  const interval =
+    options.worker === false
+      ? undefined
+      : setInterval(
+          () => {
+            if (
+              !closed &&
+              !ticking &&
+              (recoveryPending ||
+                pendingRunIds.size ||
+                collectingRuns.size ||
+                collectingRestaurants.size ||
+                (store.kind === "postgres" && store.hasWorkerLock))
+            )
+              track(
+                tick().catch(() => {
+                  recoveryPending = true;
+                  console.error(
+                    "Worker database step failed; saved jobs remain queued.",
+                  );
+                }),
+              );
+          },
+          store.kind === "postgres" ? 1000 : 75,
+        );
   if (interval) interval.unref();
 
   app.get("/api/health", (_req, res) =>
-    res.json({ ok: true, storage: "sqlite", mode: "local operator" }),
+    res.json({
+      ok: true,
+      storage: store.kind,
+      mode: "private operator workspace",
+    }),
   );
-  app.get("/api/bootstrap", (_req, res) => {
+  app.get("/api/bootstrap", async (_req, res) => {
     const value: Bootstrap = {
-      restaurants: store.all("restaurants"),
-      banks: store.all("banks"),
-      runs: store.all<Run>("runs").map((run) => metrics(store, run)),
-      artifacts: store
-        .all<ArtifactVersion>("artifacts")
-        .map((artifact) => ({
-          ...artifact,
-          runId:
-            artifact.runId ||
-            store.get<Opportunity>("opportunities", artifact.opportunityId)
-              ?.runId,
-        })),
-      sources: store.all("sources"),
+      restaurants: await store.all("restaurants"),
+      banks: await store.all("banks"),
+      runs: await Promise.all(
+        (await store.all<Run>("runs")).map(
+          async (run) => await metrics(store, run),
+        ),
+      ),
+      artifacts: await Promise.all(
+        (await store.all<ArtifactVersion>("artifacts")).map(
+          async (artifact) => ({
+            ...artifact,
+            runId:
+              artifact.runId ||
+              (
+                await store.get<Opportunity>(
+                  "opportunities",
+                  artifact.opportunityId,
+                )
+              )?.runId,
+          }),
+        ),
+      ),
+      sources: await store.all("sources"),
       provider: providerInfo(),
       demoRestaurantId: DEMO_ID,
-      preferredRestaurantId: store
-        .all<Restaurant>("restaurants")
-        .find((r) => !r.facts.some((f) => f.provenance === "synthetic"))?.id,
+      preferredRestaurantId: (await store.all<Restaurant>("restaurants")).find(
+        (r) => !r.facts.some((f) => f.provenance === "synthetic"),
+      )?.id,
     };
     res.json(value);
   });
-  app.post("/api/restaurants", (req, res) => {
+  app.post("/api/restaurants", async (req, res) => {
     const confirmed = req.body?.confirmed === true;
-    const website = textInput(req.body?.website, "website", 2000);
+    const input = textInput(req.body?.website, "website", 2000);
+    const website =
+      /^[a-z][a-z0-9+.-]*:/i.test(input) || input.startsWith("//")
+        ? input
+        : `https://${input}`;
     try {
       validatePublicUrl(website);
     } catch (error) {
@@ -792,11 +913,23 @@ export function createApplication(
         error instanceof Error ? error.message : "Invalid website.",
       );
     }
+    const businessType = req.body?.businessType ?? "business";
+    if (!["restaurant", "business"].includes(businessType))
+      throw new ApiError(
+        400,
+        "Choose restaurant or business as the business type.",
+      );
     const restaurant: Restaurant = {
       id: id("restaurant"),
       name: textInput(req.body?.name, "name", 120),
-      website: new URL(website).href,
-      location: textInput(req.body?.location, "location", 300),
+      website: validatePublicUrl(website).href,
+      location: req.body?.location
+        ? textInput(req.body.location, "location", 300)
+        : "",
+      businessType,
+      category: req.body?.category
+        ? textInput(req.body.category, "category", 120)
+        : undefined,
       cuisine: req.body?.cuisine
         ? textInput(req.body.cuisine, "cuisine", 120)
         : undefined,
@@ -809,7 +942,12 @@ export function createApplication(
       createdAt: now(),
       ...(confirmed ? { confirmedAt: now() } : {}),
     };
-    store.put("restaurants", restaurant);
+    if (!/[\p{L}\p{N}]/u.test(restaurant.name))
+      throw new ApiError(
+        400,
+        "The business name must contain letters or numbers.",
+      );
+    await store.put("restaurants", restaurant);
     const source: SourceSnapshot = {
       id: id("source"),
       restaurantId: restaurant.id,
@@ -822,17 +960,17 @@ export function createApplication(
       status: "succeeded",
       mode: "live",
     };
-    store.put("sources", source);
+    await store.put("sources", source);
     restaurant.facts = restaurant.facts.map((fact) => ({
       ...fact,
       sourceId: source.id,
     }));
-    store.put("restaurants", restaurant);
-    scheduleCollection(restaurant);
+    await store.put("restaurants", restaurant);
+    await scheduleCollection(restaurant);
     res.status(201).json(restaurant);
   });
-  app.post("/api/restaurants/:id/collect-sources", (req, res) => {
-    const restaurant = requireEntity<Restaurant>(
+  app.post("/api/restaurants/:id/collect-sources", async (req, res) => {
+    const restaurant = await requireEntity<Restaurant>(
       store,
       "restaurants",
       req.params.id,
@@ -842,11 +980,11 @@ export function createApplication(
         400,
         "Synthetic fixtures have no public website to collect.",
       );
-    scheduleCollection(restaurant);
+    await scheduleCollection(restaurant);
     res.status(202).json({ status: "collecting" });
   });
-  app.patch("/api/restaurants/:id", (req, res) => {
-    const restaurant = requireEntity<Restaurant>(
+  app.patch("/api/restaurants/:id", async (req, res) => {
+    const restaurant = await requireEntity<Restaurant>(
       store,
       "restaurants",
       req.params.id,
@@ -880,7 +1018,7 @@ export function createApplication(
       const fact = restaurant.facts[index];
       if (fact.provenance === "website") {
         const source = fact.sourceId
-          ? store.get<SourceSnapshot>("sources", fact.sourceId)
+          ? await store.get<SourceSnapshot>("sources", fact.sourceId)
           : undefined;
         if (
           !source ||
@@ -918,11 +1056,11 @@ export function createApplication(
       status: "succeeded",
       mode: "live",
     };
-    store.put("sources", source);
-    res.json(store.put("restaurants", restaurant));
+    await store.put("sources", source);
+    res.json(await store.put("restaurants", restaurant));
   });
-  app.post("/api/restaurants/:id/query-banks", (req, res) => {
-    const restaurant = requireEntity<Restaurant>(
+  app.post("/api/restaurants/:id/query-banks", async (req, res) => {
+    const restaurant = await requireEntity<Restaurant>(
       store,
       "restaurants",
       req.params.id,
@@ -936,9 +1074,9 @@ export function createApplication(
         400,
         "A question bank must contain between 1 and 20 questions.",
       );
-    const prior = store
-      .all<QueryBank>("banks")
-      .filter((bank) => bank.restaurantId === restaurant.id);
+    const prior = (await store.all<QueryBank>("banks")).filter(
+      (bank) => bank.restaurantId === restaurant.id,
+    );
     const queries: Query[] = raw
       ? raw.map((value: unknown) => {
           const record =
@@ -981,32 +1119,32 @@ export function createApplication(
       contentHash: hash(queries),
       queries,
     };
-    res.status(201).json(store.put("banks", bank));
+    res.status(201).json(await store.put("banks", bank));
   });
-  function idempotent(
+  async function idempotent(
     req: Request,
     operation: string,
     fingerprint: string,
-    create: () => Run,
-  ): Run {
+    create: () => Promise<Run>,
+  ): Promise<Run> {
     const key = requestKey(req);
-    const prior = store.request(key);
-    if (prior) {
-      if (prior.operation !== operation || prior.fingerprint !== fingerprint)
-        throw new ApiError(
-          409,
-          "This idempotency key was already used for a different request.",
-        );
-      return requireEntity<Run>(store, "runs", prior.entityId);
-    }
-    return store.transaction(() => {
-      const run = create();
-      store.saveRequest(key, operation, run.id, fingerprint);
+    return await store.transaction(async () => {
+      const prior = await store.request(key);
+      if (prior) {
+        if (prior.operation !== operation || prior.fingerprint !== fingerprint)
+          throw new ApiError(
+            409,
+            "This idempotency key was already used for a different request.",
+          );
+        return requireEntity<Run>(store, "runs", prior.entityId);
+      }
+      const run = await create();
+      await store.saveRequest(key, operation, run.id, fingerprint);
       return run;
     });
   }
-  app.post("/api/runs", (req, res) => {
-    const bank = requireEntity<QueryBank>(
+  app.post("/api/runs", async (req, res) => {
+    const bank = await requireEntity<QueryBank>(
       store,
       "banks",
       textInput(req.body?.bankId, "bankId"),
@@ -1014,38 +1152,57 @@ export function createApplication(
     const mode = req.body?.mode ?? "synthetic";
     if (!["synthetic", "live"].includes(mode))
       throw new ApiError(400, "Mode must be synthetic or live.");
-    const run = idempotent(
+    const run = await idempotent(
       req,
       "start-run",
       hash({ bankId: bank.id, mode }),
-      () => newRun(store, bank, mode),
+      async () => await newRun(store, bank, mode),
     );
+    if (["queued", "running"].includes(run.status)) pendingRunIds.add(run.id);
     res.status(202).json(run);
   });
-  app.get("/api/runs/:id", (req, res) =>
-    res.json(metrics(store, requireEntity<Run>(store, "runs", req.params.id))),
+  app.get("/api/runs/:id", async (req, res) =>
+    res.json(
+      await metrics(
+        store,
+        await requireEntity<Run>(store, "runs", req.params.id),
+      ),
+    ),
   );
-  app.get("/api/runs/:id/results", (req, res) =>
-    res.json(metrics(store, requireEntity<Run>(store, "runs", req.params.id))),
+  app.get("/api/runs/:id/results", async (req, res) =>
+    res.json(
+      await metrics(
+        store,
+        await requireEntity<Run>(store, "runs", req.params.id),
+      ),
+    ),
   );
-  app.post("/api/runs/:id/rerun", (req, res) => {
-    const source = requireEntity<Run>(store, "runs", req.params.id);
+  app.post("/api/runs/:id/rerun", async (req, res) => {
+    const source = await requireEntity<Run>(store, "runs", req.params.id);
     if (["queued", "running"].includes(source.status))
       throw new ApiError(
         409,
         "Wait for the current run to finish before repeating it.",
       );
-    const bank = requireEntity<QueryBank>(store, "banks", source.bankId);
-    const run = idempotent(req, "rerun", hash({ sourceRunId: source.id }), () =>
-      newRun(store, bank, source.mode, source),
+    const bank = await requireEntity<QueryBank>(store, "banks", source.bankId);
+    const run = await idempotent(
+      req,
+      "rerun",
+      hash({ sourceRunId: source.id }),
+      async () => await newRun(store, bank, source.mode, source),
     );
+    if (["queued", "running"].includes(run.status)) pendingRunIds.add(run.id);
     res.status(202).json(run);
   });
-  app.post("/api/runs/:id/retry-failed", (req, res) => {
-    const run = requireEntity<Run>(store, "runs", req.params.id);
+  app.post("/api/runs/:id/retry-failed", async (req, res) => {
+    const run = await requireEntity<Run>(store, "runs", req.params.id);
     if (["queued", "running"].includes(run.status))
       throw new ApiError(409, "The run is still active.");
-    const settings = requireEntity<ProviderSettings>(store, "settings", run.id);
+    const settings = await requireEntity<ProviderSettings>(
+      store,
+      "settings",
+      run.id,
+    );
     const used = run.results.reduce((sum, result) => sum + result.attempts, 0);
     const retryable = run.results.filter(
       (result) => result.status === "failed" && result.attempts < 4,
@@ -1064,23 +1221,24 @@ export function createApplication(
         : result,
     );
     run.status = "queued";
+    pendingRunIds.add(run.id);
     delete run.completedAt;
-    store.put("settings", settings);
-    res.status(202).json(saveRun(run));
+    await store.put("settings", settings);
+    res.status(202).json(await saveRun(run));
   });
-  app.post("/api/runs/:id/collect-competitor-sources", (req, res) => {
-    const run = requireEntity<Run>(store, "runs", req.params.id);
-    scheduleCompetitorCollection(run);
+  app.post("/api/runs/:id/collect-competitor-sources", async (req, res) => {
+    const run = await requireEntity<Run>(store, "runs", req.params.id);
+    await scheduleCompetitorCollection(run);
     res.status(202).json({ status: "collecting" });
   });
-  app.post("/api/runs/:id/reparse", (req, res) => {
-    const run = requireEntity<Run>(store, "runs", req.params.id);
+  app.post("/api/runs/:id/reparse", async (req, res) => {
+    const run = await requireEntity<Run>(store, "runs", req.params.id);
     if (["queued", "running"].includes(run.status))
       throw new ApiError(
         409,
         "Wait for this run to finish before reviewing extraction.",
       );
-    const restaurant = requireEntity<Restaurant>(
+    const restaurant = await requireEntity<Restaurant>(
       store,
       "restaurants",
       run.restaurantId,
@@ -1102,8 +1260,7 @@ export function createApplication(
     run.analysisRevision = (run.analysisRevision ?? 1) + 1;
     run.parsedAt = now();
     if (!run.sourceSnapshotIds)
-      run.sourceSnapshotIds = store
-        .all<SourceSnapshot>("sources")
+      run.sourceSnapshotIds = (await store.all<SourceSnapshot>("sources"))
         .filter(
           (s) =>
             s.restaurantId === restaurant.id &&
@@ -1112,8 +1269,8 @@ export function createApplication(
             s.fetchedAt <= run.createdAt,
         )
         .map((s) => s.id);
-    const saved = saveRun(run);
-    store.put("calls", {
+    const saved = await saveRun(run);
+    await store.put("calls", {
       id: id("audit"),
       kind: "parser-review",
       runId: run.id,
@@ -1131,17 +1288,17 @@ export function createApplication(
     });
     res.json(saved);
   });
-  app.get("/api/runs/:id/audit", (req, res) => {
-    requireEntity<Run>(store, "runs", req.params.id);
+  app.get("/api/runs/:id/audit", async (req, res) => {
+    await requireEntity<Run>(store, "runs", req.params.id);
     res.json(
-      store
-        .all<{ runId?: string; kind?: string }>("calls")
-        .filter((record) => record.runId === req.params.id && record.kind),
+      (await store.all<{ runId?: string; kind?: string }>("calls")).filter(
+        (record) => record.runId === req.params.id && record.kind,
+      ),
     );
   });
-  app.get("/api/runs/:id/report", (req, res) => {
-    const run = requireEntity<Run>(store, "runs", req.params.id);
-    const restaurant = requireEntity<Restaurant>(
+  app.get("/api/runs/:id/report", async (req, res) => {
+    const run = await requireEntity<Run>(store, "runs", req.params.id);
+    const restaurant = await requireEntity<Restaurant>(
       store,
       "restaurants",
       run.restaurantId,
@@ -1154,15 +1311,13 @@ export function createApplication(
       exportedAt: now(),
       run,
       restaurant,
-      bank: requireEntity<QueryBank>(store, "banks", run.bankId),
-      opportunities: ensureOpportunities(store, run),
-      sources: store
-        .all<SourceSnapshot>("sources")
-        .filter(
-          (s) =>
-            s.restaurantId === restaurant.id &&
-            (s.runId === run.id || run.sourceSnapshotIds?.includes(s.id)),
-        ),
+      bank: await requireEntity<QueryBank>(store, "banks", run.bankId),
+      opportunities: await ensureOpportunities(store, run),
+      sources: (await store.all<SourceSnapshot>("sources")).filter(
+        (s) =>
+          s.restaurantId === restaurant.id &&
+          (s.runId === run.id || run.sourceSnapshotIds?.includes(s.id)),
+      ),
       limitations: [
         "This is a snapshot of the saved provider configuration and tested questions, not a universal ranking.",
         "Mention and recommendation presence are separate; explicit list positions are presentation order.",
@@ -1170,16 +1325,16 @@ export function createApplication(
       ],
     });
   });
-  app.get("/api/runs/:id/opportunities", (req, res) =>
+  app.get("/api/runs/:id/opportunities", async (req, res) =>
     res.json(
-      ensureOpportunities(
+      await ensureOpportunities(
         store,
-        requireEntity<Run>(store, "runs", req.params.id),
+        await requireEntity<Run>(store, "runs", req.params.id),
       ),
     ),
   );
-  app.post("/api/sources/:id/review", (req, res) => {
-    const source = requireEntity<SourceSnapshot>(
+  app.post("/api/sources/:id/review", async (req, res) => {
+    const source = await requireEntity<SourceSnapshot>(
       store,
       "sources",
       req.params.id,
@@ -1192,8 +1347,8 @@ export function createApplication(
       reason: textInput(req.body.reason, "review reason", 1500),
       reviewedAt: now(),
     };
-    store.put("sources", source);
-    store.put("calls", {
+    await store.put("sources", source);
+    await store.put("calls", {
       id: id("audit"),
       kind: "source-review",
       runId: source.runId,
@@ -1203,19 +1358,21 @@ export function createApplication(
       at: now(),
     });
     if (source.runId) {
-      const run = store.get<Run>("runs", source.runId);
+      const run = await store.get<Run>("runs", source.runId);
       if (run) {
         run.analysisRevision = (run.analysisRevision ?? 1) + 1;
-        store.put("runs", run);
+        await store.put("runs", run);
       }
     }
     res.json(source);
   });
-  app.get("/api/sources/:id", (req, res) =>
-    res.json(requireEntity<SourceSnapshot>(store, "sources", req.params.id)),
+  app.get("/api/sources/:id", async (req, res) =>
+    res.json(
+      await requireEntity<SourceSnapshot>(store, "sources", req.params.id),
+    ),
   );
-  app.post("/api/opportunities/:id/artifacts", (req, res) => {
-    const opportunity = requireEntity<Opportunity>(
+  app.post("/api/opportunities/:id/artifacts", async (req, res) => {
+    const opportunity = await requireEntity<Opportunity>(
       store,
       "opportunities",
       req.params.id,
@@ -1226,16 +1383,16 @@ export function createApplication(
         400,
         "Select an artifact type supported by this opportunity.",
       );
-    res.status(201).json(createArtifact(store, opportunity, type));
+    res.status(201).json(await createArtifact(store, opportunity, type));
   });
-  app.patch("/api/artifacts/:id", (req, res) => {
-    const artifact = requireEntity<ArtifactVersion>(
+  app.patch("/api/artifacts/:id", async (req, res) => {
+    const artifact = await requireEntity<ArtifactVersion>(
       store,
       "artifacts",
       req.params.id,
     );
     const content = textInput(req.body?.content, "content", 50_000);
-    const opportunity = requireEntity<Opportunity>(
+    const opportunity = await requireEntity<Opportunity>(
       store,
       "opportunities",
       artifact.opportunityId,
@@ -1243,11 +1400,17 @@ export function createApplication(
     res
       .status(201)
       .json(
-        createArtifact(store, opportunity, artifact.type, content, artifact),
+        await createArtifact(
+          store,
+          opportunity,
+          artifact.type,
+          content,
+          artifact,
+        ),
       );
   });
-  app.get("/api/artifacts/:id/export", (req, res) => {
-    const artifact = requireEntity<ArtifactVersion>(
+  app.get("/api/artifacts/:id/export", async (req, res) => {
+    const artifact = await requireEntity<ArtifactVersion>(
       store,
       "artifacts",
       req.params.id,
@@ -1270,13 +1433,13 @@ export function createApplication(
     );
     res.send(artifact.content);
   });
-  app.get("/api/comparisons", (req, res) => {
-    const before = requireEntity<Run>(
+  app.get("/api/comparisons", async (req, res) => {
+    const before = await requireEntity<Run>(
       store,
       "runs",
       textInput(req.query.before, "before"),
     );
-    const after = requireEntity<Run>(
+    const after = await requireEntity<Run>(
       store,
       "runs",
       textInput(req.query.after, "after"),
@@ -1284,10 +1447,13 @@ export function createApplication(
     const comparison = compareRuns(
       before,
       after,
-      requireEntity<QueryBank>(store, "banks", before.bankId),
-      requireEntity<QueryBank>(store, "banks", after.bankId),
+      await requireEntity<QueryBank>(store, "banks", before.bankId),
+      await requireEntity<QueryBank>(store, "banks", after.bankId),
     );
-    store.put("comparisons", { id: `${before.id}:${after.id}`, ...comparison });
+    await store.put("comparisons", {
+      id: `${before.id}:${after.id}`,
+      ...comparison,
+    });
     res.json(comparison);
   });
   app.use("/api", (_req, res) =>
@@ -1319,8 +1485,8 @@ export function createApplication(
     close: async () => {
       closed = true;
       if (interval) clearInterval(interval);
-      await Promise.allSettled([...background]);
-      store.close();
+      while (background.size) await Promise.allSettled([...background]);
+      await store.close();
     },
   };
 }
@@ -1329,16 +1495,36 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
-  const runtime = createApplication();
-  const port = boundedEnv("PORT", 3001, 1, 65535);
-  const server = runtime.app.listen(port, "127.0.0.1", () =>
-    console.log(`TableSignal API listening at http://127.0.0.1:${port}`),
-  );
-  const shutdown = () => {
-    server.close(() => {
-      void runtime.close().then(() => process.exit(0));
-    });
-  };
-  process.once("SIGINT", shutdown);
-  process.once("SIGTERM", shutdown);
+  try {
+    const host = process.env.HOST || "127.0.0.1";
+    if (
+      !["127.0.0.1", "localhost", "::1"].includes(host) &&
+      !(
+        process.env.TABLESIGNAL_PUBLIC_ORIGIN || process.env.RENDER_EXTERNAL_URL
+      )
+    )
+      throw new Error(
+        "A public listener requires TABLESIGNAL_PUBLIC_ORIGIN and private workspace access.",
+      );
+    const runtime = await createApplication();
+    const port = boundedEnv("PORT", 3001, 1, 65535);
+    const server = runtime.app.listen(port, host, () =>
+      console.log(`TableSignal API listening at http://${host}:${port}`),
+    );
+    const shutdown = () => {
+      server.close(() => {
+        void runtime.close().then(() => process.exit(0));
+      });
+    };
+    process.once("SIGINT", shutdown);
+    process.once("SIGTERM", shutdown);
+  } catch (error) {
+    console.error(
+      error instanceof Error &&
+        !/postgres|connection string|password=/i.test(error.message)
+        ? error.message
+        : "Startup failed. Check private server configuration.",
+    );
+    process.exitCode = 1;
+  }
 }
